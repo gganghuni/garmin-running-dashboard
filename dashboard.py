@@ -100,7 +100,7 @@ with tab_overview:
             ov_date_min = min(all_dates)
             ov_date_max = max(all_dates)
             ov_range = st.sidebar.date_input("Overview date range",
-                value=(max(ov_date_min, ov_date_max - timedelta(days=30)), ov_date_max),
+                value=(max(ov_date_min, ov_date_max - timedelta(days=90)), ov_date_max),
                 min_value=ov_date_min, max_value=ov_date_max, key="ov_date")
             if len(ov_range) == 2:
                 if not run_df.empty:
@@ -266,7 +266,7 @@ with tab_run:
         st.sidebar.header("🏃 Running Filters")
         date_min = df['activity_date'].min().date()
         date_max = df['activity_date'].max().date()
-        date_range = st.sidebar.date_input("Run date range", value=(max(date_min, date_max - timedelta(days=30)), date_max),
+        date_range = st.sidebar.date_input("Run date range", value=(max(date_min, date_max - timedelta(days=90)), date_max),
                                            min_value=date_min, max_value=date_max, key="run_date")
         if len(date_range) == 2:
             df = df[(df['activity_date'].dt.date >= date_range[0]) & (df['activity_date'].dt.date <= date_range[1])]
@@ -365,7 +365,7 @@ with tab_bike:
         st.sidebar.header("🚴 Cycling Filters")
         c_date_min = cdf['activity_date'].min().date()
         c_date_max = cdf['activity_date'].max().date()
-        c_date_range = st.sidebar.date_input("Bike date range", value=(max(c_date_min, c_date_max - timedelta(days=30)), c_date_max),
+        c_date_range = st.sidebar.date_input("Bike date range", value=(max(c_date_min, c_date_max - timedelta(days=90)), c_date_max),
                                               min_value=c_date_min, max_value=c_date_max, key="bike_date")
         if len(c_date_range) == 2:
             cdf = cdf[(cdf['activity_date'].dt.date >= c_date_range[0]) & (cdf['activity_date'].dt.date <= c_date_range[1])]
@@ -524,7 +524,7 @@ with tab_health:
         st.sidebar.header("❤️ Health Filters")
         h_min = hdf['date'].min().date()
         h_max = hdf['date'].max().date()
-        h_range = st.sidebar.date_input("Health date range", value=(max(h_min, h_max - timedelta(days=30)), h_max),
+        h_range = st.sidebar.date_input("Health date range", value=(max(h_min, h_max - timedelta(days=90)), h_max),
                                          min_value=h_min, max_value=h_max, key="health_date")
         if len(h_range) == 2:
             hdf = hdf[(hdf['date'].dt.date >= h_range[0]) & (hdf['date'].dt.date <= h_range[1])]
