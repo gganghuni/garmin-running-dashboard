@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import sqlite3
 from pathlib import Path
+from datetime import timedelta
 
 DB_PATH = Path(__file__).parent / "analysis.db"
 
@@ -237,7 +238,7 @@ with tab_run:
         st.sidebar.header("🏃 Running Filters")
         date_min = df['activity_date'].min().date()
         date_max = df['activity_date'].max().date()
-        date_range = st.sidebar.date_input("Run date range", value=(date_min, date_max),
+        date_range = st.sidebar.date_input("Run date range", value=(max(date_min, date_max - timedelta(days=30)), date_max),
                                            min_value=date_min, max_value=date_max, key="run_date")
         if len(date_range) == 2:
             df = df[(df['activity_date'].dt.date >= date_range[0]) & (df['activity_date'].dt.date <= date_range[1])]
@@ -336,7 +337,7 @@ with tab_bike:
         st.sidebar.header("🚴 Cycling Filters")
         c_date_min = cdf['activity_date'].min().date()
         c_date_max = cdf['activity_date'].max().date()
-        c_date_range = st.sidebar.date_input("Bike date range", value=(c_date_min, c_date_max),
+        c_date_range = st.sidebar.date_input("Bike date range", value=(max(c_date_min, c_date_max - timedelta(days=30)), c_date_max),
                                               min_value=c_date_min, max_value=c_date_max, key="bike_date")
         if len(c_date_range) == 2:
             cdf = cdf[(cdf['activity_date'].dt.date >= c_date_range[0]) & (cdf['activity_date'].dt.date <= c_date_range[1])]
@@ -495,7 +496,7 @@ with tab_health:
         st.sidebar.header("❤️ Health Filters")
         h_min = hdf['date'].min().date()
         h_max = hdf['date'].max().date()
-        h_range = st.sidebar.date_input("Health date range", value=(h_min, h_max),
+        h_range = st.sidebar.date_input("Health date range", value=(max(h_min, h_max - timedelta(days=30)), h_max),
                                          min_value=h_min, max_value=h_max, key="health_date")
         if len(h_range) == 2:
             hdf = hdf[(hdf['date'].dt.date >= h_range[0]) & (hdf['date'].dt.date <= h_range[1])]
@@ -566,4 +567,3 @@ with tab_health:
             fig.update_yaxes(range=[0, 100], title_text="Score")
             fig.update_layout(height=350, margin=dict(t=20))
             st.plotly_chart(fig, use_container_width=True)
-
