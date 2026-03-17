@@ -86,10 +86,35 @@ with tab_overview:
     if hdf.empty and run_df.empty and cyc_df.empty:
         st.warning("데이터가 없습니다. 먼저 동기화를 실행하세요.")
     else:
-        # ─── 오늘 상태 ──────────────────────────────────
+        # Overview 날짜 필터
+        st.sidebar.header("📊 Overview Filters")
+        all_dates = []
+        if not run_df.empty:
+            all_dates.extend(run_df['activity_date'].dt.date.tolist())
+        if not cyc_df.empty:
+            all_dates.extend(cyc_df['activity_date'].dt.date.tolist())
         if not hdf.empty:
+            all_dates.extend(hdf['date'].dt.date.tolist())
+
+        if all_dates:
+            ov_date_min = min(all_dates)
+            ov_date_max = max(all_dates)
+            ov_range = st.sidebar.date_input("Overview date range",
+                value=(max(ov_date_min, ov_date_max - timedelta(days=30)), ov_date_max),
+                min_value=ov_date_min, max_value=ov_date_max, key="ov_date")
+            if len(ov_range) == 2:
+                if not run_df.empty:
+                    run_df = run_df[(run_df['activity_date'].dt.date >= ov_range[0]) & (run_df['activity_date'].dt.date <= ov_range[1])]
+                if not cyc_df.empty:
+                    cyc_df = cyc_df[(cyc_df['activity_date'].dt.date >= ov_range[0]) & (cyc_df['activity_date'].dt.date <= ov_range[1])]
+                if not hdf.empty:
+                    hdf = hdf[(hdf['date'].dt.date >= ov_range[0]) & (hdf['date'].dt.date <= ov_range[1])]
+
+        # ─── 오늘 상태 (항상 최신 데이터) ─────────────────
+        hdf_all = load_health_data()
+        if not hdf_all.empty:
             st.header("Today's Status")
-            latest = hdf.iloc[-1]
+            latest = hdf_all.iloc[-1]
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1:
                 v = latest.get('training_readiness')
@@ -215,14 +240,17 @@ with tab_overview:
                                   legend=dict(orientation="h", yanchor="top", y=-0.15))
                 st.plotly_chart(fig, use_container_width=True)
 
-        # ─── 총 요약 ────────────────────────────────────
+        # ─── 총 요약 (전체 기간) ─────────────────────────
         st.divider()
+        st.caption("All-Time Summary")
+        run_all = load_run_data()
+        cyc_all = load_cycling_data()
         c1, c2, c3, c4, c5 = st.columns(5)
-        run_km = run_df['total_distance_km'].sum() if not run_df.empty else 0
-        bike_km = cyc_df['total_distance_km'].sum() if not cyc_df.empty else 0
-        with c1: st.metric("Total Runs", len(run_df) if not run_df.empty else 0)
+        run_km = run_all['total_distance_km'].sum() if not run_all.empty else 0
+        bike_km = cyc_all['total_distance_km'].sum() if not cyc_all.empty else 0
+        with c1: st.metric("Total Runs", len(run_all) if not run_all.empty else 0)
         with c2: st.metric("Run Distance", f"{run_km:.0f} km")
-        with c3: st.metric("Total Rides", len(cyc_df) if not cyc_df.empty else 0)
+        with c3: st.metric("Total Rides", len(cyc_all) if not cyc_all.empty else 0)
         with c4: st.metric("Bike Distance", f"{bike_km:.0f} km")
         with c5: st.metric("Total Distance", f"{run_km + bike_km:.0f} km")
 
