@@ -9,7 +9,7 @@ from datetime import timedelta
 DB_PATH = Path(__file__).parent / "analysis.db"
 
 st.set_page_config(page_title="Garmin Analytics", layout="wide")
-st.title("🏃 Garmin Analytics Dashboard")
+st.title("🏃 GGanghuni's Garmin Analytics Dashboard")
 
 
 @st.cache_resource
