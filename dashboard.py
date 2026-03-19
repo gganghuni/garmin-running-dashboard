@@ -9,7 +9,7 @@ from datetime import timedelta
 DB_PATH = Path(__file__).parent / "analysis.db"
 
 st.set_page_config(page_title="Garmin Analytics", layout="wide")
-st.title("🏃 Garmin Analytics Dashboard")
+st.title("🏃 GGanghuni's Garmin Analytics Dashboard")
 
 
 @st.cache_resource
@@ -26,7 +26,6 @@ def safe_load(query):
 
 
 def add_week_columns(df, date_col='activity_date'):
-    """주간 그룹용 컬럼 추가: week_start(정렬용), week_label(표시용)"""
     week_start = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
     df['week_start'] = week_start
     df['week'] = week_start.dt.strftime('%m/%d')
@@ -94,7 +93,6 @@ with tab_overview:
     if hdf.empty and run_df.empty and cyc_df.empty:
         st.warning("데이터가 없습니다. 먼저 동기화를 실행하세요.")
     else:
-        # Overview 날짜 필터
         st.sidebar.header("📊 Overview Filters")
         all_dates = []
         if not run_df.empty:
@@ -147,7 +145,7 @@ with tab_overview:
 
             st.divider()
 
-        # ─── 주간 운동 볼륨 (러닝 + 사이클링) ───────────
+        # ─── 주간 운동 볼륨 ─────────────────────────────
         st.header("Weekly Training Volume")
         st.caption("주간 러닝(빨강) + 사이클링(파랑) 총 거리입니다. 급격한 증가(주 10% 이상)는 부상 위험이 있으니 점진적으로 늘려가세요.")
         weekly_data = []
@@ -178,10 +176,10 @@ with tab_overview:
                               legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
             st.plotly_chart(fig, use_container_width=True)
 
-        # ─── Recovery vs Training ────────────────────────
+        # ─── Recovery vs Training (영역 차트 + 히트맵) ───
         if not hdf.empty:
             st.header("Recovery & Training Trend")
-            st.caption("왼쪽: 수면 점수와 HRV로 회복 상태를 확인합니다. 오른쪽: 훈련 준비도(막대)와 스트레스(선)의 관계를 보여줍니다. 준비도가 낮고 스트레스가 높으면 휴식이 필요합니다.")
+            st.caption("왼쪽: 수면 점수와 HRV로 회복 상태를 확인합니다. 오른쪽: 훈련 준비도를 날짜별 색상으로 보여줍니다. 준비도가 낮고 스트레스가 높으면 휴식이 필요합니다.")
             col_rec, col_tr = st.columns(2)
 
             with col_rec:
@@ -189,14 +187,16 @@ with tab_overview:
                 if not rec_df.empty:
                     fig = go.Figure()
                     fig.add_trace(go.Scatter(
-                        x=rec_df['date'], y=rec_df['sleep_score'], mode='lines+markers',
-                        name='Sleep Score', marker=dict(size=4, color='#636EFA'), line=dict(width=1)
+                        x=rec_df['date'], y=rec_df['sleep_score'], mode='lines',
+                        name='Sleep Score', line=dict(color='#636EFA', width=1),
+                        fill='tozeroy', fillcolor='rgba(99,110,250,0.15)'
                     ))
                     hrv_valid = rec_df[rec_df['hrv_ms'].notna()]
                     if not hrv_valid.empty:
                         fig.add_trace(go.Scatter(
-                            x=hrv_valid['date'], y=hrv_valid['hrv_ms'], mode='lines+markers',
-                            name='HRV (ms)', marker=dict(size=4, color='#00CC96'), line=dict(width=1),
+                            x=hrv_valid['date'], y=hrv_valid['hrv_ms'], mode='lines',
+                            name='HRV (ms)', line=dict(color='#00CC96', width=1),
+                            fill='tozeroy', fillcolor='rgba(0,204,150,0.1)',
                             yaxis='y2'
                         ))
                     fig.update_layout(
@@ -231,7 +231,7 @@ with tab_overview:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-        # ─── VO2 Max 추이 ───────────────────────────────
+        # ─── VO2 Max 추이 (영역 차트 + 목표선) ──────────
         if not hdf.empty:
             vo2_df = hdf[(hdf['vo2_max_running'].notna()) | (hdf['vo2_max_cycling'].notna())].copy()
             if not vo2_df.empty:
@@ -241,15 +241,19 @@ with tab_overview:
                 run_v = vo2_df[vo2_df['vo2_max_running'].notna()]
                 if not run_v.empty:
                     fig.add_trace(go.Scatter(
-                        x=run_v['date'], y=run_v['vo2_max_running'], mode='markers+lines',
-                        name='Running', marker=dict(size=6, color='#EF553B'), line=dict(width=1)
+                        x=run_v['date'], y=run_v['vo2_max_running'], mode='lines+markers',
+                        name='Running', marker=dict(size=5, color='#EF553B'), line=dict(width=1),
+                        fill='tozeroy', fillcolor='rgba(239,85,59,0.1)'
                     ))
                 cyc_v = vo2_df[vo2_df['vo2_max_cycling'].notna()]
                 if not cyc_v.empty:
                     fig.add_trace(go.Scatter(
-                        x=cyc_v['date'], y=cyc_v['vo2_max_cycling'], mode='markers+lines',
-                        name='Cycling', marker=dict(size=6, color='#636EFA'), line=dict(width=1)
+                        x=cyc_v['date'], y=cyc_v['vo2_max_cycling'], mode='lines+markers',
+                        name='Cycling', marker=dict(size=5, color='#636EFA'), line=dict(width=1),
+                        fill='tozeroy', fillcolor='rgba(99,110,250,0.1)'
                     ))
+                # 목표선 (상위 등급 기준)
+                fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="Excellent (50)")
                 fig.update_yaxes(title_text="VO2 Max")
                 fig.update_layout(height=350, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15))
@@ -312,7 +316,7 @@ with tab_run:
 
             st.divider()
 
-            # 1. Zone2 Pace Trend
+            # 1. Zone2 Pace Trend (산점도 + 추세선 유지)
             st.header("1. Zone2 Pace Trend")
             st.caption("심박수 137-156 bpm 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
             if not z2.empty:
@@ -333,18 +337,33 @@ with tab_run:
             else:
                 st.info("Zone2 pace data not available.")
 
-            # 2. HR Drift
+            # 2. HR Drift (롤리팝 차트)
             st.header("2. HR Drift")
             st.caption("운동 전반부 대비 후반부 심박수 상승률입니다. 🟢 5% 이하 = 유산소 효율 좋음 | 🟠 5-7% = 보통 | 🔴 7% 이상 = 오버페이스 또는 탈수 주의")
             if not hr.empty:
                 colors = ['#00CC96' if v <= 5 else '#FFA15A' if v <= 7 else '#EF553B' for v in hr['hr_drift_percent']]
-                fig = go.Figure(go.Bar(x=hr['activity_date'], y=hr['hr_drift_percent'], marker_color=colors,
-                    hovertemplate='%{x|%Y-%m-%d}<br>Drift: %{y:.1f}%<extra></extra>'))
-                fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="5%")
+                fig = go.Figure()
+                # 롤리팝 스템 (세로선)
+                for idx, row in hr.iterrows():
+                    c = '#00CC96' if row['hr_drift_percent'] <= 5 else '#FFA15A' if row['hr_drift_percent'] <= 7 else '#EF553B'
+                    fig.add_trace(go.Scatter(
+                        x=[row['activity_date'], row['activity_date']], y=[0, row['hr_drift_percent']],
+                        mode='lines', line=dict(color=c, width=2), showlegend=False,
+                        hoverinfo='skip'
+                    ))
+                # 롤리팝 헤드 (점)
+                fig.add_trace(go.Scatter(
+                    x=hr['activity_date'], y=hr['hr_drift_percent'], mode='markers',
+                    marker=dict(size=10, color=colors, line=dict(width=1, color='white')),
+                    hovertemplate='%{x|%Y-%m-%d}<br>Drift: %{y:.1f}%<extra></extra>',
+                    showlegend=False
+                ))
+                fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="5% 기준")
+                fig.update_yaxes(title_text="HR Drift (%)")
                 fig.update_layout(height=400, margin=dict(t=20))
                 st.plotly_chart(fig, use_container_width=True)
 
-            # 3. Weekly Distance
+            # 3. Weekly Distance (영역 차트)
             st.header("3. Weekly Distance")
             st.caption("주간 총 러닝 거리입니다. 훈련량을 안정적으로 유지하면서 점진적으로 늘려가는 것이 좋습니다.")
             wd = df[df['total_distance_km'].notna()].copy()
@@ -353,12 +372,18 @@ with tab_run:
                 weekly = weekly.sort_values('week_start')
                 weekly['total_km'] = weekly['total_km'].round(1)
                 weekly['week'] = weekly['week_start'].dt.strftime('%m/%d')
-                fig = px.bar(weekly, x='week', y='total_km', hover_data={'runs': True})
-                fig.update_traces(marker_color='#EF553B')
-                fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'))
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=weekly['week'], y=weekly['total_km'], mode='lines+markers',
+                    marker=dict(size=7, color='#EF553B'), line=dict(width=2, color='#EF553B'),
+                    fill='tozeroy', fillcolor='rgba(239,85,59,0.15)',
+                    hovertemplate='%{x}<br>%{y:.1f} km<extra></extra>'
+                ))
+                fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'),
+                                  yaxis_title="Distance (km)")
                 st.plotly_chart(fig, use_container_width=True)
 
-            # 4. Pace Stability
+            # 4. Pace Stability (유지)
             st.header("4. Pace Stability (8km+)")
             st.caption("8km 이상 장거리 러닝에서 1km 구간별 페이스 변동계수(CV)입니다. 7.5% 이하면 안정적인 페이스 유지. 높으면 후반에 페이스가 떨어진다는 뜻입니다.")
             ps = df[df['pace_stability_cv'].notna()].copy()
@@ -370,6 +395,8 @@ with tab_run:
                 fig.add_hline(y=7.5, line_dash="dash", line_color="green", annotation_text="7.5%")
                 fig.update_layout(height=400, margin=dict(t=20))
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("최근 8km 이상 장거리 러닝 기록이 없습니다.")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -409,7 +436,7 @@ with tab_bike:
 
             st.divider()
 
-            # 1. Zone2 Speed Trend
+            # 1. Zone2 Speed Trend (유지)
             st.header("1. Zone2 Speed Trend")
             st.caption("심박수 120-145 bpm 구간에서의 평균 속도입니다. 숫자가 높을수록 유산소 체력이 좋아진 것입니다. 같은 심박에서 더 빨리 달릴 수 있으면 체력이 향상된 것이에요.")
             z2c = cdf[(cdf['zone2_avg_speed_kmh'].notna()) & (cdf['zone2_ratio'] >= 20)].copy()
@@ -428,27 +455,45 @@ with tab_bike:
             else:
                 st.info("Zone2 speed data not available.")
 
-            # 2. HR Drift
+            # 2. HR Drift (롤리팝 차트)
             st.header("2. HR Drift")
             st.caption("라이딩 전반부 대비 후반부 심박수 상승률입니다. 🟢 5% 이하 = 양호 | 🟠 5-7% = 보통 | 🔴 7% 이상 = 탈수/영양부족/피로 주의")
             if not hr_c.empty:
-                colors = ['#00CC96' if v <= 5 else '#FFA15A' if v <= 7 else '#EF553B' for v in hr_c['hr_drift_percent']]
-                fig = go.Figure(go.Bar(x=hr_c['activity_date'], y=hr_c['hr_drift_percent'], marker_color=colors,
-                    hovertemplate='%{x|%Y-%m-%d}<br>Drift: %{y:.1f}%<extra></extra>'))
-                fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="5%")
+                fig = go.Figure()
+                for idx, row in hr_c.iterrows():
+                    c = '#00CC96' if row['hr_drift_percent'] <= 5 else '#FFA15A' if row['hr_drift_percent'] <= 7 else '#EF553B'
+                    fig.add_trace(go.Scatter(
+                        x=[row['activity_date'], row['activity_date']], y=[0, row['hr_drift_percent']],
+                        mode='lines', line=dict(color=c, width=2), showlegend=False, hoverinfo='skip'
+                    ))
+                colors_c = ['#00CC96' if v <= 5 else '#FFA15A' if v <= 7 else '#EF553B' for v in hr_c['hr_drift_percent']]
+                fig.add_trace(go.Scatter(
+                    x=hr_c['activity_date'], y=hr_c['hr_drift_percent'], mode='markers',
+                    marker=dict(size=10, color=colors_c, line=dict(width=1, color='white')),
+                    hovertemplate='%{x|%Y-%m-%d}<br>Drift: %{y:.1f}%<extra></extra>',
+                    showlegend=False
+                ))
+                fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="5% 기준")
+                fig.update_yaxes(title_text="HR Drift (%)")
                 fig.update_layout(height=400, margin=dict(t=20))
                 st.plotly_chart(fig, use_container_width=True)
 
-            # 3. Weekly Distance
+            # 3. Weekly Distance (영역 차트)
             st.header("3. Weekly Distance")
             st.caption("주간 총 라이딩 거리입니다. 꾸준한 주간 볼륨 유지가 체력 향상의 기본입니다.")
             cyc_weekly = cdf.groupby('week_start').agg(total_km=('total_distance_km', 'sum'), rides=('total_distance_km', 'count')).reset_index()
             cyc_weekly = cyc_weekly.sort_values('week_start')
             cyc_weekly['total_km'] = cyc_weekly['total_km'].round(1)
             cyc_weekly['week'] = cyc_weekly['week_start'].dt.strftime('%m/%d')
-            fig = px.bar(cyc_weekly, x='week', y='total_km', hover_data={'rides': True})
-            fig.update_traces(marker_color='#636EFA')
-            fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'))
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=cyc_weekly['week'], y=cyc_weekly['total_km'], mode='lines+markers',
+                marker=dict(size=7, color='#636EFA'), line=dict(width=2, color='#636EFA'),
+                fill='tozeroy', fillcolor='rgba(99,110,250,0.15)',
+                hovertemplate='%{x}<br>%{y:.1f} km<extra></extra>'
+            ))
+            fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'),
+                              yaxis_title="Distance (km)")
             st.plotly_chart(fig, use_container_width=True)
 
             # 4. Avg Speed Trend
@@ -468,35 +513,37 @@ with tab_bike:
                                   legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                 st.plotly_chart(fig, use_container_width=True)
 
-            # 5. Power Trend
+            # 5. Power Trend (영역 차트 — Avg vs NP 겹침)
             if 'avg_power' in cdf.columns and cdf['avg_power'].notna().any():
                 st.header("5. Power Trend")
                 st.caption("Avg Power는 평균 출력, NP(Normalized Power)는 페달링 변동을 보정한 실질 강도입니다. NP가 올라가면 같은 시간에 더 강한 강도로 탈 수 있게 된 것입니다.")
                 pwr = cdf[cdf['avg_power'].notna()].copy()
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(x=pwr['activity_date'], y=pwr['avg_power'], mode='markers',
-                    name='Avg Power', marker=dict(size=6, color='#FFA15A'),
-                    hovertemplate='%{x|%Y-%m-%d}<br>Avg: %{y:.0f}W<extra></extra>'))
+                fig.add_trace(go.Scatter(
+                    x=pwr['activity_date'], y=pwr['avg_power'], mode='lines+markers',
+                    name='Avg Power', marker=dict(size=5, color='#FFA15A'), line=dict(width=1, color='#FFA15A'),
+                    fill='tozeroy', fillcolor='rgba(255,161,90,0.1)',
+                    hovertemplate='%{x|%Y-%m-%d}<br>Avg: %{y:.0f}W<extra></extra>'
+                ))
                 if 'normalized_power' in pwr.columns:
                     np_df = pwr[pwr['normalized_power'].notna()]
                     if not np_df.empty:
-                        fig.add_trace(go.Scatter(x=np_df['activity_date'], y=np_df['normalized_power'],
-                            mode='markers+lines', name='Normalized Power',
-                            marker=dict(size=6, color='#EF553B'), line=dict(width=1),
-                            hovertemplate='%{x|%Y-%m-%d}<br>NP: %{y:.0f}W<extra></extra>'))
+                        fig.add_trace(go.Scatter(
+                            x=np_df['activity_date'], y=np_df['normalized_power'], mode='lines+markers',
+                            name='Normalized Power', marker=dict(size=5, color='#EF553B'), line=dict(width=2, color='#EF553B'),
+                            fill='tonexty', fillcolor='rgba(239,85,59,0.08)',
+                            hovertemplate='%{x|%Y-%m-%d}<br>NP: %{y:.0f}W<extra></extra>'
+                        ))
                 fig.update_yaxes(title_text="Power (W)")
                 fig.update_layout(height=400, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                 st.plotly_chart(fig, use_container_width=True)
 
-                # 6. Power Zone Distribution
+                # 6. Power Zone Distribution (도넛 차트)
                 st.header("6. Power Zone Distribution")
                 st.caption("라이드별 평균 파워 기준 강도 분류입니다. Z2(지구력) 비중이 높으면 베이스 훈련을 잘 하고 있는 것입니다.")
-                # Power zone은 FIT 파일에서 직접 계산해야 하므로,
-                # 여기서는 avg_power 기반으로 라이드별 강도 분포를 표시
                 pwr_rides = cdf[cdf['avg_power'].notna()].copy()
                 if not pwr_rides.empty:
-                    # 간이 강도 분류 (avg_power 기준)
                     def power_zone_label(p):
                         if p < 100: return 'Z1 Recovery'
                         elif p < 150: return 'Z2 Endurance'
@@ -515,9 +562,9 @@ with tab_bike:
                     zone_counts['zone'] = pd.Categorical(zone_counts['zone'], categories=zone_order, ordered=True)
                     zone_counts = zone_counts.sort_values('zone')
 
-                    fig = px.bar(zone_counts, x='zone', y='count', color='zone',
-                                 color_discrete_map=zone_colors,
-                                 labels={'count': 'Rides', 'zone': 'Power Zone'})
+                    fig = px.pie(zone_counts, values='count', names='zone', hole=0.5,
+                                 color='zone', color_discrete_map=zone_colors)
+                    fig.update_traces(textposition='outside', textinfo='label+percent')
                     fig.update_layout(height=400, margin=dict(t=20), showlegend=False)
                     st.plotly_chart(fig, use_container_width=True)
 
@@ -568,57 +615,108 @@ with tab_health:
                               legend=dict(orientation="h", yanchor="top", y=-0.15))
             st.plotly_chart(fig, use_container_width=True)
 
-        # 2. Resting HR + HRV
+        # 2. Resting HR & HRV (이중 축 하나로 합침)
         st.header("2. Resting HR & HRV")
-        st.caption("안정시 심박수는 낮을수록, HRV는 높을수록 좋습니다. 안정시 심박이 갑자기 높아지면 피로/질병 신호일 수 있어요.")
-        col1, col2 = st.columns(2)
-        with col1:
-            rhr = hdf[hdf['resting_hr'].notna()]
+        st.caption("안정시 심박수(빨강)는 낮을수록, HRV(초록)는 높을수록 좋습니다. 안정시 심박이 갑자기 높아지면 피로/질병 신호일 수 있어요.")
+        rhr = hdf[hdf['resting_hr'].notna()].copy()
+        hrv = hdf[hdf['hrv_ms'].notna()].copy()
+        if not rhr.empty or not hrv.empty:
+            fig = go.Figure()
             if not rhr.empty:
-                fig = go.Figure(go.Scatter(x=rhr['date'], y=rhr['resting_hr'], mode='markers+lines',
-                    marker=dict(size=4, color='#EF553B'), line=dict(width=1)))
-                fig.update_yaxes(title_text="bpm")
-                fig.update_layout(height=300, margin=dict(t=30), title="Resting HR")
-                st.plotly_chart(fig, use_container_width=True)
-        with col2:
-            hrv = hdf[hdf['hrv_ms'].notna()]
+                fig.add_trace(go.Scatter(
+                    x=rhr['date'], y=rhr['resting_hr'], mode='lines+markers',
+                    name='Resting HR (bpm)', marker=dict(size=4, color='#EF553B'), line=dict(width=1),
+                    hovertemplate='%{x|%Y-%m-%d}<br>HR: %{y} bpm<extra></extra>'
+                ))
             if not hrv.empty:
-                fig = go.Figure(go.Scatter(x=hrv['date'], y=hrv['hrv_ms'], mode='markers+lines',
-                    marker=dict(size=4, color='#00CC96'), line=dict(width=1)))
-                fig.update_yaxes(title_text="ms")
-                fig.update_layout(height=300, margin=dict(t=30), title="HRV")
-                st.plotly_chart(fig, use_container_width=True)
+                fig.add_trace(go.Scatter(
+                    x=hrv['date'], y=hrv['hrv_ms'], mode='lines+markers',
+                    name='HRV (ms)', marker=dict(size=4, color='#00CC96'), line=dict(width=1),
+                    yaxis='y2',
+                    hovertemplate='%{x|%Y-%m-%d}<br>HRV: %{y} ms<extra></extra>'
+                ))
+            fig.update_layout(
+                height=350, margin=dict(t=20),
+                yaxis=dict(title="Resting HR (bpm)"),
+                yaxis2=dict(title="HRV (ms)", overlaying='y', side='right'),
+                legend=dict(orientation="h", yanchor="top", y=-0.15)
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-        # 3. Stress + Body Battery
+        # 3. Stress (영역 차트) & Body Battery (워터폴)
         st.header("3. Stress & Body Battery")
         st.caption("스트레스는 낮을수록 좋고, 바디배터리는 충전(초록)이 소모(빨강)보다 많아야 회복이 충분한 것입니다.")
         col1, col2 = st.columns(2)
         with col1:
-            stress = hdf[hdf['avg_stress'].notna()]
+            stress = hdf[hdf['avg_stress'].notna()].copy()
             if not stress.empty:
-                fig = go.Figure(go.Scatter(x=stress['date'], y=stress['avg_stress'], mode='markers+lines',
-                    marker=dict(size=4, color='#FFA15A'), line=dict(width=1)))
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=stress['date'], y=stress['avg_stress'], mode='lines',
+                    line=dict(color='#FFA15A', width=1),
+                    fill='tozeroy', fillcolor='rgba(255,161,90,0.2)',
+                    hovertemplate='%{x|%Y-%m-%d}<br>Stress: %{y}<extra></extra>'
+                ))
+                fig.add_hline(y=40, line_dash="dash", line_color="gray", annotation_text="보통 (40)")
                 fig.update_yaxes(range=[0, 100], title_text="Stress")
                 fig.update_layout(height=300, margin=dict(t=30), title="Avg Stress")
                 st.plotly_chart(fig, use_container_width=True)
+
         with col2:
-            bb = hdf[hdf['body_battery_max'].notna()]
+            bb = hdf[hdf['body_battery_max'].notna()].copy()
             if not bb.empty:
                 fig = go.Figure()
-                fig.add_trace(go.Bar(x=bb['date'], y=bb['body_battery_max'], name='Charged', marker_color='#00CC96'))
-                fig.add_trace(go.Bar(x=bb['date'], y=bb['body_battery_drain'], name='Drained', marker_color='#EF553B'))
-                fig.update_layout(height=300, margin=dict(t=30), title="Body Battery", barmode='group')
+                # 워터폴 스타일: 충전 - 소모 = 순 변화
+                bb['net'] = bb['body_battery_max'].fillna(0) - bb['body_battery_drain'].fillna(0)
+                bb_colors = ['#00CC96' if v >= 0 else '#EF553B' for v in bb['net']]
+                fig.add_trace(go.Bar(
+                    x=bb['date'], y=bb['net'], marker_color=bb_colors,
+                    hovertemplate='%{x|%Y-%m-%d}<br>순 충전: %{y}<extra></extra>'
+                ))
+                fig.add_hline(y=0, line_color="gray", line_width=1)
+                fig.update_yaxes(title_text="Net Battery (충전 - 소모)")
+                fig.update_layout(height=300, margin=dict(t=30), title="Body Battery (순 충전량)")
                 st.plotly_chart(fig, use_container_width=True)
 
-        # 4. Training Readiness
+        # 4. Training Readiness (게이지 + 추세)
         st.header("4. Training Readiness")
         st.caption("훈련 준비도입니다. 🟢 50 이상 = 운동하기 좋은 날 | 🟠 30-49 = 가벼운 운동만 | 🔴 30 미만 = 휴식 권장")
-        tr = hdf[hdf['training_readiness'].notna()]
+        tr = hdf[hdf['training_readiness'].notna()].copy()
         if not tr.empty:
-            colors = ['#00CC96' if v >= 50 else '#FFA15A' if v >= 30 else '#EF553B' for v in tr['training_readiness']]
-            fig = go.Figure(go.Bar(x=tr['date'], y=tr['training_readiness'], marker_color=colors,
-                hovertemplate='%{x|%Y-%m-%d}<br>%{y} (%{customdata})<extra></extra>',
-                customdata=tr['training_readiness_level']))
-            fig.update_yaxes(range=[0, 100], title_text="Score")
-            fig.update_layout(height=350, margin=dict(t=20))
-            st.plotly_chart(fig, use_container_width=True)
+            col_gauge, col_trend = st.columns([1, 2])
+
+            with col_gauge:
+                latest_tr = tr.iloc[-1]['training_readiness']
+                latest_level = tr.iloc[-1].get('training_readiness_level', '')
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=latest_tr,
+                    title=dict(text=f"오늘 ({latest_level})"),
+                    gauge=dict(
+                        axis=dict(range=[0, 100]),
+                        bar=dict(color='#636EFA'),
+                        steps=[
+                            dict(range=[0, 30], color='#FFCDD2'),
+                            dict(range=[30, 50], color='#FFE0B2'),
+                            dict(range=[50, 100], color='#C8E6C9'),
+                        ],
+                        threshold=dict(line=dict(color='red', width=2), thickness=0.75, value=latest_tr)
+                    )
+                ))
+                fig.update_layout(height=250, margin=dict(t=50, b=10))
+                st.plotly_chart(fig, use_container_width=True)
+
+            with col_trend:
+                colors = ['#00CC96' if v >= 50 else '#FFA15A' if v >= 30 else '#EF553B' for v in tr['training_readiness']]
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=tr['date'], y=tr['training_readiness'], mode='lines+markers',
+                    marker=dict(size=6, color=colors), line=dict(width=1, color='#636EFA'),
+                    hovertemplate='%{x|%Y-%m-%d}<br>%{y} (%{customdata})<extra></extra>',
+                    customdata=tr['training_readiness_level']
+                ))
+                fig.add_hline(y=50, line_dash="dash", line_color="green", annotation_text="Good (50)")
+                fig.add_hline(y=30, line_dash="dash", line_color="orange", annotation_text="Low (30)")
+                fig.update_yaxes(range=[0, 100], title_text="Score")
+                fig.update_layout(height=250, margin=dict(t=20))
+                st.plotly_chart(fig, use_container_width=True)
