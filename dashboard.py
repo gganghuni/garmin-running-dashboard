@@ -145,6 +145,52 @@ with tab_overview:
 
             st.divider()
 
+        # ─── 필터 기간 평균 (필터 연동) ──────────────────
+        if not hdf.empty:
+            date_from = hdf['date'].min().strftime('%m/%d')
+            date_to = hdf['date'].max().strftime('%m/%d')
+            st.header(f"Period Average ({date_from} ~ {date_to})")
+            st.caption("선택한 기간의 평균 지표입니다. 최신값과 비교하여 ▲ 상승 / ▼ 하락을 표시합니다.")
+            c1, c2, c3, c4, c5, c6 = st.columns(6)
+
+            # latest 값 가져오기 (비교용)
+            lt = hdf_all.iloc[-1] if not hdf_all.empty else {}
+
+            with c1:
+                avg_v = hdf['training_readiness'].mean()
+                lt_v = lt.get('training_readiness') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Readiness", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+            with c2:
+                avg_v = hdf['sleep_score'].mean()
+                lt_v = lt.get('sleep_score') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Sleep", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+            with c3:
+                avg_v = hdf['resting_hr'].mean()
+                lt_v = lt.get('resting_hr') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Resting HR", f"{avg_v:.0f} bpm" if pd.notna(avg_v) else "N/A",
+                          delta=delta, delta_color="inverse")
+            with c4:
+                avg_v = hdf['body_battery_max'].mean()
+                lt_v = lt.get('body_battery_max') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Battery", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+            with c5:
+                avg_v = hdf['avg_stress'].mean()
+                lt_v = lt.get('avg_stress') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Stress", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A",
+                          delta=delta, delta_color="inverse")
+            with c6:
+                avg_v = hdf['steps'].mean()
+                lt_v = lt.get('steps') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+,.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Steps", f"{avg_v:,.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+
+            st.divider()
+
         # ─── 주간 운동 볼륨 ─────────────────────────────
         st.header("Weekly Training Volume")
         st.caption("주간 러닝(빨강) + 사이클링(파랑) 총 거리입니다. 급격한 증가(주 10% 이상)는 부상 위험이 있으니 점진적으로 늘려가세요.")
