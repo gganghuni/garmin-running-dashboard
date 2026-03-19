@@ -25,12 +25,20 @@ def safe_load(query):
         return pd.DataFrame()
 
 
+def add_week_columns(df, date_col='activity_date'):
+    """주간 그룹용 컬럼 추가: week_start(정렬용), week_label(표시용)"""
+    week_start = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
+    df['week_start'] = week_start
+    df['week'] = week_start.dt.strftime('%m/%d')
+    return df
+
+
 @st.cache_data(ttl=300)
 def load_run_data():
     df = safe_load("SELECT * FROM run_analysis ORDER BY activity_date")
     if 'activity_date' in df.columns:
         df['activity_date'] = pd.to_datetime(df['activity_date'])
-        df['week'] = df['activity_date'].dt.isocalendar().year.astype(str) + '-W' + df['activity_date'].dt.isocalendar().week.astype(str).str.zfill(2)
+        df = add_week_columns(df)
     return df
 
 
@@ -39,7 +47,7 @@ def load_cycling_data():
     df = safe_load("SELECT * FROM cycling_analysis ORDER BY activity_date")
     if 'activity_date' in df.columns:
         df['activity_date'] = pd.to_datetime(df['activity_date'])
-        df['week'] = df['activity_date'].dt.isocalendar().year.astype(str) + '-W' + df['activity_date'].dt.isocalendar().week.astype(str).str.zfill(2)
+        df = add_week_columns(df)
     return df
 
 
@@ -144,11 +152,11 @@ with tab_overview:
         st.caption("주간 러닝(빨강) + 사이클링(파랑) 총 거리입니다. 급격한 증가(주 10% 이상)는 부상 위험이 있으니 점진적으로 늘려가세요.")
         weekly_data = []
         if not run_df.empty:
-            rw = run_df.groupby('week').agg(run_km=('total_distance_km', 'sum')).reset_index()
-            weekly_data.append(rw.set_index('week'))
+            rw = run_df.groupby('week_start').agg(run_km=('total_distance_km', 'sum')).reset_index()
+            weekly_data.append(rw.set_index('week_start'))
         if not cyc_df.empty:
-            cw = cyc_df.groupby('week').agg(bike_km=('total_distance_km', 'sum')).reset_index()
-            weekly_data.append(cw.set_index('week'))
+            cw = cyc_df.groupby('week_start').agg(bike_km=('total_distance_km', 'sum')).reset_index()
+            weekly_data.append(cw.set_index('week_start'))
 
         if weekly_data:
             combined = pd.concat(weekly_data, axis=1).fillna(0).reset_index()
@@ -159,11 +167,14 @@ with tab_overview:
                 combined['bike_km'] = 0
             combined['run_km'] = combined['run_km'].round(1)
             combined['bike_km'] = combined['bike_km'].round(1)
+            combined = combined.sort_values('week_start')
+            combined['week'] = combined['week_start'].dt.strftime('%m/%d')
 
             fig = go.Figure()
             fig.add_trace(go.Bar(x=combined['week'], y=combined['run_km'], name='Running', marker_color='#EF553B'))
             fig.add_trace(go.Bar(x=combined['week'], y=combined['bike_km'], name='Cycling', marker_color='#636EFA'))
             fig.update_layout(barmode='stack', height=400, margin=dict(t=20), yaxis_title="Distance (km)",
+                              xaxis=dict(type='category'),
                               legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
             st.plotly_chart(fig, use_container_width=True)
 
@@ -338,11 +349,13 @@ with tab_run:
             st.caption("주간 총 러닝 거리입니다. 훈련량을 안정적으로 유지하면서 점진적으로 늘려가는 것이 좋습니다.")
             wd = df[df['total_distance_km'].notna()].copy()
             if not wd.empty:
-                weekly = wd.groupby('week').agg(total_km=('total_distance_km', 'sum'), runs=('total_distance_km', 'count')).reset_index()
+                weekly = wd.groupby('week_start').agg(total_km=('total_distance_km', 'sum'), runs=('total_distance_km', 'count')).reset_index()
+                weekly = weekly.sort_values('week_start')
                 weekly['total_km'] = weekly['total_km'].round(1)
+                weekly['week'] = weekly['week_start'].dt.strftime('%m/%d')
                 fig = px.bar(weekly, x='week', y='total_km', hover_data={'runs': True})
                 fig.update_traces(marker_color='#EF553B')
-                fig.update_layout(height=400, margin=dict(t=20))
+                fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'))
                 st.plotly_chart(fig, use_container_width=True)
 
             # 4. Pace Stability
@@ -429,11 +442,13 @@ with tab_bike:
             # 3. Weekly Distance
             st.header("3. Weekly Distance")
             st.caption("주간 총 라이딩 거리입니다. 꾸준한 주간 볼륨 유지가 체력 향상의 기본입니다.")
-            cyc_weekly = cdf.groupby('week').agg(total_km=('total_distance_km', 'sum'), rides=('total_distance_km', 'count')).reset_index()
+            cyc_weekly = cdf.groupby('week_start').agg(total_km=('total_distance_km', 'sum'), rides=('total_distance_km', 'count')).reset_index()
+            cyc_weekly = cyc_weekly.sort_values('week_start')
             cyc_weekly['total_km'] = cyc_weekly['total_km'].round(1)
+            cyc_weekly['week'] = cyc_weekly['week_start'].dt.strftime('%m/%d')
             fig = px.bar(cyc_weekly, x='week', y='total_km', hover_data={'rides': True})
             fig.update_traces(marker_color='#636EFA')
-            fig.update_layout(height=400, margin=dict(t=20))
+            fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'))
             st.plotly_chart(fig, use_container_width=True)
 
             # 4. Avg Speed Trend
