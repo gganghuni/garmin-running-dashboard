@@ -174,7 +174,7 @@ with tab_overview:
             fig.update_layout(barmode='stack', height=400, margin=dict(t=20), yaxis_title="Distance (km)",
                               xaxis=dict(type='category'),
                               legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         # ─── Recovery vs Training (영역 차트 + 히트맵) ───
         if not hdf.empty:
@@ -205,7 +205,7 @@ with tab_overview:
                         yaxis2=dict(title="HRV (ms)", overlaying='y', side='right'),
                         legend=dict(orientation="h", yanchor="top", y=-0.15)
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
             with col_tr:
                 tr_df = hdf[['date', 'training_readiness', 'avg_stress']].copy()
@@ -229,7 +229,7 @@ with tab_overview:
                         yaxis2=dict(title="Stress", overlaying='y', side='right', range=[0, 100]),
                         legend=dict(orientation="h", yanchor="top", y=-0.15)
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
         # ─── VO2 Max 추이 (영역 차트 + 목표선) ──────────
         if not hdf.empty:
@@ -257,7 +257,7 @@ with tab_overview:
                 fig.update_yaxes(title_text="VO2 Max")
                 fig.update_layout(height=350, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
         # ─── 총 요약 (전체 기간) ─────────────────────────
         st.divider()
@@ -333,7 +333,7 @@ with tab_run:
                 fig.update_yaxes(title_text="Pace (min/km)", range=[pace_max + pad, pace_min - pad])
                 fig.update_layout(height=400, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             else:
                 st.info("Zone2 pace data not available.")
 
@@ -361,7 +361,7 @@ with tab_run:
                 fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="5% 기준")
                 fig.update_yaxes(title_text="HR Drift (%)")
                 fig.update_layout(height=400, margin=dict(t=20))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             # 3. Weekly Distance (영역 차트)
             st.header("3. Weekly Distance")
@@ -381,7 +381,7 @@ with tab_run:
                 ))
                 fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'),
                                   yaxis_title="Distance (km)")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             # 4. Pace Stability (유지)
             st.header("4. Pace Stability (8km+)")
@@ -394,7 +394,7 @@ with tab_run:
                     customdata=ps['total_distance_km']))
                 fig.add_hline(y=7.5, line_dash="dash", line_color="green", annotation_text="7.5%")
                 fig.update_layout(height=400, margin=dict(t=20))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             else:
                 st.info("최근 8km 이상 장거리 러닝 기록이 없습니다.")
 
@@ -451,7 +451,7 @@ with tab_bike:
                 fig.update_yaxes(title_text="Zone2 Speed (km/h)")
                 fig.update_layout(height=400, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             else:
                 st.info("Zone2 speed data not available.")
 
@@ -476,7 +476,7 @@ with tab_bike:
                 fig.add_hline(y=5, line_dash="dash", line_color="green", annotation_text="5% 기준")
                 fig.update_yaxes(title_text="HR Drift (%)")
                 fig.update_layout(height=400, margin=dict(t=20))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             # 3. Weekly Distance (영역 차트)
             st.header("3. Weekly Distance")
@@ -494,7 +494,7 @@ with tab_bike:
             ))
             fig.update_layout(height=400, margin=dict(t=20), xaxis=dict(type='category'),
                               yaxis_title="Distance (km)")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             # 4. Avg Speed Trend
             st.header("4. Avg Speed Trend")
@@ -511,7 +511,7 @@ with tab_bike:
                 fig.update_yaxes(title_text="Speed (km/h)")
                 fig.update_layout(height=400, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             # 5. Power Trend (영역 차트 — Avg vs NP 겹침)
             if 'avg_power' in cdf.columns and cdf['avg_power'].notna().any():
@@ -537,7 +537,7 @@ with tab_bike:
                 fig.update_yaxes(title_text="Power (W)")
                 fig.update_layout(height=400, margin=dict(t=20),
                                   legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 # 6. Power Zone Distribution (도넛 차트)
                 st.header("6. Power Zone Distribution")
@@ -566,7 +566,7 @@ with tab_bike:
                                  color='zone', color_discrete_map=zone_colors)
                     fig.update_traces(textposition='outside', textinfo='label+percent')
                     fig.update_layout(height=400, margin=dict(t=20), showlegend=False)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
             # 7. Speed Stability (20km+)
             if 'speed_stability_cv' in cdf.columns:
@@ -580,7 +580,7 @@ with tab_bike:
                         customdata=ss['total_distance_km']))
                     fig.add_hline(y=10, line_dash="dash", line_color="green", annotation_text="10%")
                     fig.update_layout(height=400, margin=dict(t=20))
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -613,7 +613,7 @@ with tab_health:
             fig.update_yaxes(range=[0, 100], title_text="Sleep Score")
             fig.update_layout(height=350, margin=dict(t=20),
                               legend=dict(orientation="h", yanchor="top", y=-0.15))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         # 2. Resting HR & HRV (이중 축 하나로 합침)
         st.header("2. Resting HR & HRV")
@@ -641,7 +641,7 @@ with tab_health:
                 yaxis2=dict(title="HRV (ms)", overlaying='y', side='right'),
                 legend=dict(orientation="h", yanchor="top", y=-0.15)
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         # 3. Stress (영역 차트) & Body Battery (워터폴)
         st.header("3. Stress & Body Battery")
@@ -660,7 +660,7 @@ with tab_health:
                 fig.add_hline(y=40, line_dash="dash", line_color="gray", annotation_text="보통 (40)")
                 fig.update_yaxes(range=[0, 100], title_text="Stress")
                 fig.update_layout(height=300, margin=dict(t=30), title="Avg Stress")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
         with col2:
             bb = hdf[hdf['body_battery_max'].notna()].copy()
@@ -676,7 +676,7 @@ with tab_health:
                 fig.add_hline(y=0, line_color="gray", line_width=1)
                 fig.update_yaxes(title_text="Net Battery (충전 - 소모)")
                 fig.update_layout(height=300, margin=dict(t=30), title="Body Battery (순 충전량)")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
         # 4. Training Readiness (게이지 + 추세)
         st.header("4. Training Readiness")
@@ -704,7 +704,7 @@ with tab_health:
                     )
                 ))
                 fig.update_layout(height=250, margin=dict(t=50, b=10))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col_trend:
                 colors = ['#00CC96' if v >= 50 else '#FFA15A' if v >= 30 else '#EF553B' for v in tr['training_readiness']]
@@ -719,4 +719,4 @@ with tab_health:
                 fig.add_hline(y=30, line_dash="dash", line_color="orange", annotation_text="Low (30)")
                 fig.update_yaxes(range=[0, 100], title_text="Score")
                 fig.update_layout(height=250, margin=dict(t=20))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
