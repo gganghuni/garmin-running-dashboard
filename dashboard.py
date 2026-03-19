@@ -9,7 +9,7 @@ from datetime import timedelta
 DB_PATH = Path(__file__).parent / "analysis.db"
 
 st.set_page_config(page_title="Garmin Analytics", layout="wide")
-st.title("🏃 GGanghuni's Garmin Analytics Dashboard")
+st.title("🏃 Garmin Analytics Dashboard")
 
 
 @st.cache_resource
@@ -100,7 +100,7 @@ with tab_overview:
             ov_date_min = min(all_dates)
             ov_date_max = max(all_dates)
             ov_range = st.sidebar.date_input("Overview date range",
-                value=(max(ov_date_min, ov_date_max - timedelta(days=90)), ov_date_max),
+                value=(max(ov_date_min, ov_date_max - timedelta(days=30)), ov_date_max),
                 min_value=ov_date_min, max_value=ov_date_max, key="ov_date")
             if len(ov_range) == 2:
                 if not run_df.empty:
@@ -114,6 +114,7 @@ with tab_overview:
         hdf_all = load_health_data()
         if not hdf_all.empty:
             st.header("Today's Status")
+            st.caption("가민 워치에서 측정한 오늘의 신체 상태 요약입니다.")
             latest = hdf_all.iloc[-1]
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1:
@@ -140,6 +141,7 @@ with tab_overview:
 
         # ─── 주간 운동 볼륨 (러닝 + 사이클링) ───────────
         st.header("Weekly Training Volume")
+        st.caption("주간 러닝(빨강) + 사이클링(파랑) 총 거리입니다. 급격한 증가(주 10% 이상)는 부상 위험이 있으니 점진적으로 늘려가세요.")
         weekly_data = []
         if not run_df.empty:
             rw = run_df.groupby('week').agg(run_km=('total_distance_km', 'sum')).reset_index()
@@ -168,6 +170,7 @@ with tab_overview:
         # ─── Recovery vs Training ────────────────────────
         if not hdf.empty:
             st.header("Recovery & Training Trend")
+            st.caption("왼쪽: 수면 점수와 HRV로 회복 상태를 확인합니다. 오른쪽: 훈련 준비도(막대)와 스트레스(선)의 관계를 보여줍니다. 준비도가 낮고 스트레스가 높으면 휴식이 필요합니다.")
             col_rec, col_tr = st.columns(2)
 
             with col_rec:
@@ -222,6 +225,7 @@ with tab_overview:
             vo2_df = hdf[(hdf['vo2_max_running'].notna()) | (hdf['vo2_max_cycling'].notna())].copy()
             if not vo2_df.empty:
                 st.header("VO2 Max Trend")
+                st.caption("최대산소섭취량 추이입니다. 숫자가 높을수록 심폐 체력이 좋습니다. 장기적으로 올라가면 체력이 향상되고 있다는 뜻이에요.")
                 fig = go.Figure()
                 run_v = vo2_df[vo2_df['vo2_max_running'].notna()]
                 if not run_v.empty:
@@ -299,7 +303,7 @@ with tab_run:
 
             # 1. Zone2 Pace Trend
             st.header("1. Zone2 Pace Trend")
-            st.caption("Zone2 비율 30% 이상. Lower = faster.")
+            st.caption("심박수 137-156 bpm 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
             if not z2.empty:
                 z2['rolling_avg'] = z2['pace_minutes'].rolling(window=5, min_periods=2).mean()
                 fig = go.Figure()
@@ -320,7 +324,7 @@ with tab_run:
 
             # 2. HR Drift
             st.header("2. HR Drift")
-            st.caption("Below 5% = good. Above 7% = needs attention.")
+            st.caption("운동 전반부 대비 후반부 심박수 상승률입니다. 🟢 5% 이하 = 유산소 효율 좋음 | 🟠 5-7% = 보통 | 🔴 7% 이상 = 오버페이스 또는 탈수 주의")
             if not hr.empty:
                 colors = ['#00CC96' if v <= 5 else '#FFA15A' if v <= 7 else '#EF553B' for v in hr['hr_drift_percent']]
                 fig = go.Figure(go.Bar(x=hr['activity_date'], y=hr['hr_drift_percent'], marker_color=colors,
@@ -331,6 +335,7 @@ with tab_run:
 
             # 3. Weekly Distance
             st.header("3. Weekly Distance")
+            st.caption("주간 총 러닝 거리입니다. 훈련량을 안정적으로 유지하면서 점진적으로 늘려가는 것이 좋습니다.")
             wd = df[df['total_distance_km'].notna()].copy()
             if not wd.empty:
                 weekly = wd.groupby('week').agg(total_km=('total_distance_km', 'sum'), runs=('total_distance_km', 'count')).reset_index()
@@ -342,7 +347,7 @@ with tab_run:
 
             # 4. Pace Stability
             st.header("4. Pace Stability (8km+)")
-            st.caption("CV < 7.5% = stable pacing.")
+            st.caption("8km 이상 장거리 러닝에서 1km 구간별 페이스 변동계수(CV)입니다. 7.5% 이하면 안정적인 페이스 유지. 높으면 후반에 페이스가 떨어진다는 뜻입니다.")
             ps = df[df['pace_stability_cv'].notna()].copy()
             if not ps.empty:
                 fig = go.Figure(go.Scatter(x=ps['activity_date'], y=ps['pace_stability_cv'], mode='markers+lines',
@@ -393,7 +398,7 @@ with tab_bike:
 
             # 1. Zone2 Speed Trend
             st.header("1. Zone2 Speed Trend")
-            st.caption("Zone2 비율 20% 이상. Higher = better aerobic fitness.")
+            st.caption("심박수 120-145 bpm 구간에서의 평균 속도입니다. 숫자가 높을수록 유산소 체력이 좋아진 것입니다. 같은 심박에서 더 빨리 달릴 수 있으면 체력이 향상된 것이에요.")
             z2c = cdf[(cdf['zone2_avg_speed_kmh'].notna()) & (cdf['zone2_ratio'] >= 20)].copy()
             if not z2c.empty:
                 z2c['rolling_avg'] = z2c['zone2_avg_speed_kmh'].rolling(window=5, min_periods=2).mean()
@@ -412,7 +417,7 @@ with tab_bike:
 
             # 2. HR Drift
             st.header("2. HR Drift")
-            st.caption("Below 5% = good. Above 7% = dehydration or fatigue risk.")
+            st.caption("라이딩 전반부 대비 후반부 심박수 상승률입니다. 🟢 5% 이하 = 양호 | 🟠 5-7% = 보통 | 🔴 7% 이상 = 탈수/영양부족/피로 주의")
             if not hr_c.empty:
                 colors = ['#00CC96' if v <= 5 else '#FFA15A' if v <= 7 else '#EF553B' for v in hr_c['hr_drift_percent']]
                 fig = go.Figure(go.Bar(x=hr_c['activity_date'], y=hr_c['hr_drift_percent'], marker_color=colors,
@@ -423,6 +428,7 @@ with tab_bike:
 
             # 3. Weekly Distance
             st.header("3. Weekly Distance")
+            st.caption("주간 총 라이딩 거리입니다. 꾸준한 주간 볼륨 유지가 체력 향상의 기본입니다.")
             cyc_weekly = cdf.groupby('week').agg(total_km=('total_distance_km', 'sum'), rides=('total_distance_km', 'count')).reset_index()
             cyc_weekly['total_km'] = cyc_weekly['total_km'].round(1)
             fig = px.bar(cyc_weekly, x='week', y='total_km', hover_data={'rides': True})
@@ -432,6 +438,7 @@ with tab_bike:
 
             # 4. Avg Speed Trend
             st.header("4. Avg Speed Trend")
+            st.caption("라이드별 평균 속도 추이입니다. 바람/코스에 따라 변동이 크니 빨간 추세선(5회 이동평균)을 참고하세요.")
             spd = cdf[cdf['avg_speed_kmh'].notna()].copy()
             if not spd.empty:
                 spd['rolling_avg'] = spd['avg_speed_kmh'].rolling(window=5, min_periods=2).mean()
@@ -449,6 +456,7 @@ with tab_bike:
             # 5. Power Trend
             if 'avg_power' in cdf.columns and cdf['avg_power'].notna().any():
                 st.header("5. Power Trend")
+                st.caption("Avg Power는 평균 출력, NP(Normalized Power)는 페달링 변동을 보정한 실질 강도입니다. NP가 올라가면 같은 시간에 더 강한 강도로 탈 수 있게 된 것입니다.")
                 pwr = cdf[cdf['avg_power'].notna()].copy()
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=pwr['activity_date'], y=pwr['avg_power'], mode='markers',
@@ -468,7 +476,7 @@ with tab_bike:
 
                 # 6. Power Zone Distribution
                 st.header("6. Power Zone Distribution")
-                st.caption("FTP 기준 파워 존 분포. 최근 라이드와 전체 평균 비교.")
+                st.caption("라이드별 평균 파워 기준 강도 분류입니다. Z2(지구력) 비중이 높으면 베이스 훈련을 잘 하고 있는 것입니다.")
                 # Power zone은 FIT 파일에서 직접 계산해야 하므로,
                 # 여기서는 avg_power 기반으로 라이드별 강도 분포를 표시
                 pwr_rides = cdf[cdf['avg_power'].notna()].copy()
@@ -503,7 +511,7 @@ with tab_bike:
                 ss = cdf[cdf['speed_stability_cv'].notna()].copy()
                 if not ss.empty:
                     st.header("7. Speed Stability (20km+)")
-                    st.caption("5km 구간별 속도 변동계수. Lower = more consistent.")
+                    st.caption("20km 이상 장거리 라이딩에서 5km 구간별 속도 변동계수입니다. 10% 이하면 안정적인 페이싱입니다.")
                     fig = go.Figure(go.Scatter(x=ss['activity_date'], y=ss['speed_stability_cv'],
                         mode='markers+lines', marker=dict(size=8, color='#AB63FA'), line=dict(width=1),
                         hovertemplate='%{x|%Y-%m-%d}<br>CV: %{y:.1f}%<br>%{customdata:.1f}km<extra></extra>',
@@ -524,13 +532,14 @@ with tab_health:
         st.sidebar.header("❤️ Health Filters")
         h_min = hdf['date'].min().date()
         h_max = hdf['date'].max().date()
-        h_range = st.sidebar.date_input("Health date range", value=(max(h_min, h_max - timedelta(days=90)), h_max),
+        h_range = st.sidebar.date_input("Health date range", value=(max(h_min, h_max - timedelta(days=30)), h_max),
                                          min_value=h_min, max_value=h_max, key="health_date")
         if len(h_range) == 2:
             hdf = hdf[(hdf['date'].dt.date >= h_range[0]) & (hdf['date'].dt.date <= h_range[1])]
 
         # 1. Sleep
         st.header("1. Sleep Score")
+        st.caption("수면 품질 점수와 7일 이동평균(빨간 선)입니다. 추세가 떨어지면 수면 환경이나 생활 패턴을 점검해 보세요.")
         sleep_df = hdf[hdf['sleep_score'].notna()].copy()
         if not sleep_df.empty:
             fig = go.Figure()
@@ -546,6 +555,7 @@ with tab_health:
 
         # 2. Resting HR + HRV
         st.header("2. Resting HR & HRV")
+        st.caption("안정시 심박수는 낮을수록, HRV는 높을수록 좋습니다. 안정시 심박이 갑자기 높아지면 피로/질병 신호일 수 있어요.")
         col1, col2 = st.columns(2)
         with col1:
             rhr = hdf[hdf['resting_hr'].notna()]
@@ -566,6 +576,7 @@ with tab_health:
 
         # 3. Stress + Body Battery
         st.header("3. Stress & Body Battery")
+        st.caption("스트레스는 낮을수록 좋고, 바디배터리는 충전(초록)이 소모(빨강)보다 많아야 회복이 충분한 것입니다.")
         col1, col2 = st.columns(2)
         with col1:
             stress = hdf[hdf['avg_stress'].notna()]
@@ -586,6 +597,7 @@ with tab_health:
 
         # 4. Training Readiness
         st.header("4. Training Readiness")
+        st.caption("훈련 준비도입니다. 🟢 50 이상 = 운동하기 좋은 날 | 🟠 30-49 = 가벼운 운동만 | 🔴 30 미만 = 휴식 권장")
         tr = hdf[hdf['training_readiness'].notna()]
         if not tr.empty:
             colors = ['#00CC96' if v >= 50 else '#FFA15A' if v >= 30 else '#EF553B' for v in tr['training_readiness']]
