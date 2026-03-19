@@ -119,9 +119,9 @@ with tab_overview:
         # ─── 오늘 상태 (항상 최신 데이터) ─────────────────
         hdf_all = load_health_data()
         if not hdf_all.empty:
+            latest = hdf_all.iloc[-1]
             st.header(f"Latest Status ({str(latest['date'])[:10]})")
             st.caption("가민 워치에서 측정한 최근 신체 상태 요약입니다.")
-            latest = hdf_all.iloc[-1]
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             with c1:
                 v = latest.get('training_readiness')
