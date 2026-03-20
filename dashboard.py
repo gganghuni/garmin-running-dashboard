@@ -129,7 +129,7 @@ with tab_overview:
                 if pd.notna(v):
                     lv_text = f" <span style='font-size:0.85rem;opacity:0.6;font-weight:normal;'>({lv})</span>" if lv else ""
                     st.markdown(f"""<div>
-<label style="font-size:0.875rem;opacity:0.6;font-weight:400;">Training Readiness</label>
+<label style="font-size:0.875rem;font-weight:400;opacity:0.6;">Training Readiness</label>
 <div style="font-size:2.25rem;font-weight:700;line-height:1.2;">{int(v)}{lv_text}</div>
 </div>""", unsafe_allow_html=True)
                 else:
