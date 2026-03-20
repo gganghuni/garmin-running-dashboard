@@ -139,7 +139,7 @@ with tab_overview:
                 st.metric("Sleep Score", f"{int(v)}" if pd.notna(v) else "N/A")
             with c3:
                 v = latest.get('resting_hr')
-                st.metric("Resting HR", f"{int(v)} bpm" if pd.notna(v) else "N/A")
+                st.metric("Resting HR (bpm)", f"{int(v)}" if pd.notna(v) else "N/A")
             with c4:
                 v = latest.get('body_battery_level')
                 st.metric("Battery Level", f"{int(v)}" if pd.notna(v) else "N/A")
@@ -180,7 +180,7 @@ with tab_overview:
                 avg_v = hdf['resting_hr'].mean()
                 lt_v = lt.get('resting_hr') if isinstance(lt, pd.Series) else None
                 delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
-                st.metric("Avg Resting HR", f"{avg_v:.0f} bpm" if pd.notna(avg_v) else "N/A",
+                st.metric("Avg Resting HR (bpm)", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A",
                           delta=delta, delta_color="inverse")
             with c4:
                 avg_v = hdf['body_battery_level'].mean()
