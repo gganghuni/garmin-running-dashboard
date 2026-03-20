@@ -702,11 +702,40 @@ with tab_bike:
                     fig.update_layout(height=400, margin=dict(t=20), showlegend=False)
                     st.plotly_chart(fig, width="stretch")
 
-            # 7. Speed Stability (20km+)
+            # 7. FTP 추정 추이
+            if 'normalized_power' in cdf.columns:
+                ftp_rides = cdf[(cdf['normalized_power'].notna()) & (cdf['total_duration_sec'] >= 1200)].copy()
+                if not ftp_rides.empty:
+                    st.header("7. Estimated FTP Trend")
+                    st.caption("20분 이상 라이딩의 NP × 0.95로 추정한 FTP입니다. 누적 최고값이 올라가면 체력이 향상된 것입니다.")
+                    ftp_rides['est_ftp'] = (ftp_rides['normalized_power'] * 0.95).round(0)
+                    # 누적 최고 FTP
+                    ftp_rides['best_ftp'] = ftp_rides['est_ftp'].cummax()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=ftp_rides['activity_date'], y=ftp_rides['est_ftp'], mode='markers',
+                        name='라이드별 FTP', marker=dict(size=7, color='#636EFA'),
+                        hovertemplate='%{x|%Y-%m-%d}<br>FTP: %{y:.0f}W<br>NP: %{customdata:.0f}W<extra></extra>',
+                        customdata=ftp_rides['normalized_power']
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=ftp_rides['activity_date'], y=ftp_rides['best_ftp'], mode='lines',
+                        name='Best FTP', line=dict(color='#EF553B', width=2, dash='dash')
+                    ))
+                    current_ftp = ftp_rides['best_ftp'].iloc[-1]
+                    fig.add_annotation(x=ftp_rides['activity_date'].iloc[-1], y=current_ftp,
+                                       text=f"  현재 FTP: {current_ftp:.0f}W", showarrow=False,
+                                       xanchor='left', font=dict(color='#EF553B', size=12))
+                    fig.update_yaxes(title_text="FTP (W)")
+                    fig.update_layout(height=400, margin=dict(t=20),
+                                      legend=dict(orientation="h", yanchor="top", y=-0.15))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 8. Speed Stability (20km+)
             if 'speed_stability_cv' in cdf.columns:
                 ss = cdf[cdf['speed_stability_cv'].notna()].copy()
                 if not ss.empty:
-                    st.header("7. Speed Stability (20km+)")
+                    st.header("8. Speed Stability (20km+)")
                     st.caption("20km 이상 장거리 라이딩에서 5km 구간별 속도 변동계수입니다. 10% 이하면 안정적인 페이싱입니다.")
                     fig = go.Figure(go.Scatter(x=ss['activity_date'], y=ss['speed_stability_cv'],
                         mode='markers+lines', marker=dict(size=8, color='#AB63FA'), line=dict(width=1),
@@ -855,6 +884,82 @@ with tab_health:
                 fig.update_layout(height=250, margin=dict(t=20))
                 st.plotly_chart(fig, width="stretch")
 
+        # 5. 체중/체지방 추이
+        wt = hdf[hdf['weight_kg'].notna()].copy()
+        if not wt.empty:
+            st.header("5. Weight & Body Fat")
+            st.caption("체중과 체지방률 추이입니다. 체중 변화보다 체지방률 변화가 체성분 개선 여부를 더 정확히 보여줍니다.")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=wt['date'], y=wt['weight_kg'], mode='lines+markers',
+                name='Weight (kg)', marker=dict(size=5, color='#636EFA'), line=dict(width=2),
+                hovertemplate='%{x|%Y-%m-%d}<br>%{y:.1f} kg<extra></extra>'
+            ))
+            bf = wt[wt['body_fat_pct'].notna()]
+            if not bf.empty:
+                fig.add_trace(go.Scatter(
+                    x=bf['date'], y=bf['body_fat_pct'], mode='lines+markers',
+                    name='Body Fat (%)', marker=dict(size=5, color='#FFA15A'), line=dict(width=2),
+                    yaxis='y2',
+                    hovertemplate='%{x|%Y-%m-%d}<br>%{y:.1f}%<extra></extra>'
+                ))
+            fig.update_layout(
+                height=350, margin=dict(t=20),
+                yaxis=dict(title="Weight (kg)"),
+                yaxis2=dict(title="Body Fat (%)", overlaying='y', side='right'),
+                legend=dict(orientation="h", yanchor="top", y=-0.15)
+            )
+            st.plotly_chart(fig, width="stretch")
+
+        # 6. Race Predictions 추이
+        rp = hdf.copy()
+        has_race = False
+        for col in ['race_pred_5k', 'race_pred_10k', 'race_pred_half', 'race_pred_full']:
+            if col in rp.columns and rp[col].notna().any():
+                has_race = True
+                break
+        if has_race:
+            st.header("6. Race Predictions")
+            st.caption("가민이 추정한 레이스 예상 기록입니다. 숫자가 낮아질수록 체력이 향상되고 있는 것입니다.")
+            fig = go.Figure()
+            race_configs = [
+                ('race_pred_5k', '5K', '#636EFA'),
+                ('race_pred_10k', '10K', '#EF553B'),
+                ('race_pred_half', 'Half', '#00CC96'),
+                ('race_pred_full', 'Full', '#FFA15A'),
+            ]
+            for col, name, color in race_configs:
+                if col in rp.columns:
+                    rd = rp[rp[col].notna()].copy()
+                    if not rd.empty:
+                        # "HH:MM:SS" 또는 초 단위를 분으로 변환
+                        def to_minutes(v):
+                            try:
+                                if isinstance(v, (int, float)):
+                                    return float(v) / 60
+                                parts = str(v).split(':')
+                                if len(parts) == 3:
+                                    return int(parts[0]) * 60 + int(parts[1]) + int(parts[2]) / 60
+                                elif len(parts) == 2:
+                                    return int(parts[0]) + int(parts[1]) / 60
+                            except:
+                                return None
+                            return None
+                        rd['minutes'] = rd[col].apply(to_minutes)
+                        rd = rd[rd['minutes'].notna()]
+                        if not rd.empty:
+                            # hover에 원래 시간 표시
+                            fig.add_trace(go.Scatter(
+                                x=rd['date'], y=rd['minutes'], mode='lines+markers',
+                                name=name, marker=dict(size=5, color=color), line=dict(width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>%{customdata}<extra></extra>',
+                                customdata=rd[col]
+                            ))
+            fig.update_yaxes(title_text="Time (min)", autorange="reversed")
+            fig.update_layout(height=400, margin=dict(t=20),
+                              legend=dict(orientation="h", yanchor="top", y=-0.15))
+            st.plotly_chart(fig, width="stretch")
+
 
 # ═══════════════════════════════════════════════════════════
 # TAB 4: AI Coach
@@ -867,21 +972,29 @@ with tab_ai:
         if ai_tables.empty:
             st.warning("AI 분석 데이터가 없습니다. `python scripts/ai_analyzer.py`를 실행하세요.")
         else:
-            # 분석 가능한 날짜 목록
             dates = pd.read_sql_query(
                 "SELECT DISTINCT date FROM ai_analysis ORDER BY date DESC", ai_conn)
 
             if dates.empty:
                 st.warning("AI 분석 데이터가 없습니다.")
             else:
-                latest_date = dates.iloc[0]['d'] if 'd' in dates.columns else dates.iloc[0]['date']
-
                 st.sidebar.header("🤖 AI Coach Filters")
                 selected_date = st.sidebar.selectbox(
                     "분석 날짜 선택", dates['date'].tolist(), index=0, key="ai_date")
 
-                st.header(f"🤖 AI Coach Report ({selected_date})")
-                st.caption("Gemini AI가 가민 데이터를 기반으로 분석한 코칭 리포트입니다.")
+                # 비교 날짜 선택
+                compare_dates = ["비교 안 함"] + [d for d in dates['date'].tolist() if d != selected_date]
+                compare_date = st.sidebar.selectbox(
+                    "비교할 날짜 (선택)", compare_dates, index=0, key="ai_compare")
+
+                compare_mode = compare_date != "비교 안 함"
+
+                if compare_mode:
+                    st.header(f"🤖 AI Coach 비교 ({selected_date} vs {compare_date})")
+                    st.caption("두 날짜의 AI 분석을 나란히 비교합니다.")
+                else:
+                    st.header(f"🤖 AI Coach Report ({selected_date})")
+                    st.caption("Gemini AI가 가민 데이터를 기반으로 분석한 코칭 리포트입니다.")
 
                 ai_tab1, ai_tab2, ai_tab3 = st.tabs(["📅 일간 분석", "📊 주간 분석", "📈 월간 분석"])
 
@@ -889,14 +1002,37 @@ with tab_ai:
 
                 for tab, atype in [(ai_tab1, "daily"), (ai_tab2, "weekly"), (ai_tab3, "monthly")]:
                     with tab:
-                        row = pd.read_sql_query(
-                            "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
-                            ai_conn, params=[selected_date, atype])
-                        if not row.empty:
-                            st.markdown(row.iloc[0]['content'])
-                            st.divider()
-                            st.caption(f"🕐 분석 시간: {row.iloc[0]['created_at']}")
+                        if compare_mode:
+                            col_left, col_right = st.columns(2)
+                            with col_left:
+                                st.subheader(f"📌 {selected_date}")
+                                row = pd.read_sql_query(
+                                    "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                    ai_conn, params=[selected_date, atype])
+                                if not row.empty:
+                                    st.markdown(row.iloc[0]['content'])
+                                    st.caption(f"🕐 {row.iloc[0]['created_at']}")
+                                else:
+                                    st.info(f"{labels[atype]} 분석 없음")
+                            with col_right:
+                                st.subheader(f"📌 {compare_date}")
+                                row2 = pd.read_sql_query(
+                                    "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                    ai_conn, params=[compare_date, atype])
+                                if not row2.empty:
+                                    st.markdown(row2.iloc[0]['content'])
+                                    st.caption(f"🕐 {row2.iloc[0]['created_at']}")
+                                else:
+                                    st.info(f"{labels[atype]} 분석 없음")
                         else:
-                            st.info(f"{labels[atype]} 분석 데이터가 없습니다.")
+                            row = pd.read_sql_query(
+                                "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                ai_conn, params=[selected_date, atype])
+                            if not row.empty:
+                                st.markdown(row.iloc[0]['content'])
+                                st.divider()
+                                st.caption(f"🕐 분석 시간: {row.iloc[0]['created_at']}")
+                            else:
+                                st.info(f"{labels[atype]} 분석 데이터가 없습니다.")
     except Exception as e:
         st.warning(f"AI 분석 로딩 실패: {e}")
