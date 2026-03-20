@@ -126,8 +126,14 @@ with tab_overview:
             with c1:
                 v = latest.get('training_readiness')
                 lv = latest.get('training_readiness_level', '')
-                label = f"Training Readiness ({lv})" if lv and pd.notna(v) else "Training Readiness"
-                st.metric(label, f"{int(v)}" if pd.notna(v) else "N/A")
+                if pd.notna(v):
+                    lv_text = f" <span style='font-size:0.85rem;color:gray;font-weight:normal;'>({lv})</span>" if lv else ""
+                    st.markdown(f"""<div data-testid="stMetric">
+<label style="font-size:0.875rem;color:rgba(49,51,63,0.6);font-weight:400;">Training Readiness</label>
+<div style="font-size:2.25rem;font-weight:700;line-height:1.2;">{int(v)}{lv_text}</div>
+</div>""", unsafe_allow_html=True)
+                else:
+                    st.metric("Training Readiness", "N/A")
             with c2:
                 v = latest.get('sleep_score')
                 st.metric("Sleep Score", f"{int(v)}" if pd.notna(v) else "N/A")
