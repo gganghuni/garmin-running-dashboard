@@ -9,6 +9,69 @@ from datetime import timedelta
 DB_PATH = Path(__file__).parent / "analysis.db"
 
 st.set_page_config(page_title="Garmin Analytics", layout="wide")
+
+# 모바일 반응형 CSS
+st.markdown("""
+<style>
+/* metric 라벨 줄바꿈 허용 */
+[data-testid="stMetricLabel"] { white-space: normal !important; word-wrap: break-word; }
+
+/* 모바일에서 metric 컬럼 2개씩 배치 */
+@media (max-width: 768px) {
+    /* 컬럼 그리드를 2열로 변경 */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        flex: 0 0 calc(50% - 0.5rem) !important;
+        min-width: calc(50% - 0.5rem) !important;
+    }
+    /* 탭 폰트 축소 */
+    [data-testid="stTab"] button {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.5rem !important;
+    }
+    /* metric 값 폰트 축소 */
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        font-size: 1.5rem !important;
+    }
+    /* 커스텀 metric 값 폰트 축소 */
+    .custom-metric-value {
+        font-size: 1.5rem !important;
+    }
+    /* metric 라벨 폰트 축소 */
+    [data-testid="stMetric"] label {
+        font-size: 0.75rem !important;
+    }
+    /* 사이드바 기본 숨김 (햄버거 메뉴로) */
+    [data-testid="stSidebar"] {
+        min-width: 0 !important;
+    }
+}
+
+/* 초소형 화면 (폰 세로) */
+@media (max-width: 480px) {
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        flex: 0 0 100% !important;
+        min-width: 100% !important;
+    }
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        font-size: 1.3rem !important;
+    }
+    .custom-metric-value {
+        font-size: 1.3rem !important;
+    }
+    h1 {
+        font-size: 1.3rem !important;
+    }
+    h2 {
+        font-size: 1.1rem !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🏃 GGanghuni's Garmin Analytics Dashboard")
 
 
@@ -119,10 +182,15 @@ with tab_overview:
         # ─── 오늘 상태 (항상 최신 데이터) ─────────────────
         hdf_all = load_health_data()
         if not hdf_all.empty:
-            latest = hdf_all.iloc[-1]
+            # sleep_score가 있는 최신 행 (빈 데이터 행 제외)
+            hdf_valid = hdf_all[hdf_all['sleep_score'].notna()]
+            if hdf_valid.empty:
+                hdf_valid = hdf_all
+            latest = hdf_valid.iloc[-1]
             st.header(f"Latest Status ({str(latest['date'])[:10]})")
             st.caption("가민 워치에서 측정한 최근 신체 상태 요약입니다.")
-            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
+            # 1행: 4개
+            c1, c2, c3, c4 = st.columns(4)
             with c1:
                 v = latest.get('training_readiness')
                 lv = latest.get('training_readiness_level', '')
@@ -130,7 +198,7 @@ with tab_overview:
                     lv_text = f" <span style='font-size:0.85rem;opacity:0.6;font-weight:normal;'>({lv})</span>" if lv else ""
                     st.markdown(f"""<div>
 <label style="font-size:0.875rem;font-weight:400;color:white;">Training Readiness</label>
-<div style="font-size:2.25rem;font-weight:700;line-height:1.2;color:white;">{int(v)}{lv_text}</div>
+<div class="custom-metric-value" style="font-size:2.25rem;font-weight:700;line-height:1.2;color:white;">{int(v)}{lv_text}</div>
 </div>""", unsafe_allow_html=True)
                 else:
                     st.metric("Training Readiness", "N/A")
@@ -142,13 +210,15 @@ with tab_overview:
                 if pd.notna(v):
                     st.markdown(f"""<div>
 <label style="font-size:0.875rem;font-weight:400;color:white;">Resting HR</label>
-<div style="font-size:2.25rem;font-weight:700;line-height:1.2;color:white;">{int(v)} <span style='font-size:0.85rem;opacity:0.6;font-weight:normal;'>bpm</span></div>
+<div class="custom-metric-value" style="font-size:2.25rem;font-weight:700;line-height:1.2;color:white;">{int(v)} <span style='font-size:0.85rem;opacity:0.6;font-weight:normal;'>bpm</span></div>
 </div>""", unsafe_allow_html=True)
                 else:
                     st.metric("Resting HR", "N/A")
             with c4:
                 v = latest.get('body_battery_level')
                 st.metric("Battery Level", f"{int(v)}" if pd.notna(v) else "N/A")
+            # 2행: 3개
+            c5, c6, c7 = st.columns(3)
             with c5:
                 v = latest.get('body_battery_charged')
                 st.metric("Battery Charged", f"{int(v)}" if pd.notna(v) else "N/A")
@@ -167,11 +237,12 @@ with tab_overview:
             date_to = hdf['date'].max().strftime('%m/%d')
             st.header(f"Period Average ({date_from} ~ {date_to})")
             st.caption("선택한 기간의 평균 지표입니다. 최신값과 비교하여 ▲ 상승 / ▼ 하락을 표시합니다.")
-            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
 
             # latest 값 가져오기 (비교용)
             lt = hdf_all.iloc[-1] if not hdf_all.empty else {}
 
+            # 1행: 4개
+            c1, c2, c3, c4 = st.columns(4)
             with c1:
                 avg_v = hdf['training_readiness'].mean()
                 lt_v = lt.get('training_readiness') if isinstance(lt, pd.Series) else None
@@ -193,6 +264,8 @@ with tab_overview:
                 lt_v = lt.get('body_battery_level') if isinstance(lt, pd.Series) else None
                 delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
                 st.metric("Avg Battery Level", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+            # 2행: 3개
+            c5, c6, c7 = st.columns(3)
             with c5:
                 avg_v = hdf['body_battery_charged'].mean()
                 lt_v = lt.get('body_battery_charged') if isinstance(lt, pd.Series) else None
@@ -331,12 +404,13 @@ with tab_overview:
         st.caption("All-Time Summary")
         run_all = load_run_data()
         cyc_all = load_cycling_data()
-        c1, c2, c3, c4, c5 = st.columns(5)
         run_km = run_all['total_distance_km'].sum() if not run_all.empty else 0
         bike_km = cyc_all['total_distance_km'].sum() if not cyc_all.empty else 0
+        c1, c2, c3 = st.columns(3)
         with c1: st.metric("Total Runs", len(run_all) if not run_all.empty else 0)
         with c2: st.metric("Run Distance", f"{run_km:.0f} km")
         with c3: st.metric("Total Rides", len(cyc_all) if not cyc_all.empty else 0)
+        c4, c5 = st.columns(2)
         with c4: st.metric("Bike Distance", f"{bike_km:.0f} km")
         with c5: st.metric("Total Distance", f"{run_km + bike_km:.0f} km")
 
