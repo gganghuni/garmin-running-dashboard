@@ -127,9 +127,9 @@ with tab_overview:
                 v = latest.get('training_readiness')
                 lv = latest.get('training_readiness_level', '')
                 if pd.notna(v):
-                    lv_text = f" <span style='font-size:0.85rem;color:gray;font-weight:normal;'>({lv})</span>" if lv else ""
-                    st.markdown(f"""<div data-testid="stMetric">
-<label style="font-size:0.875rem;color:rgba(49,51,63,0.6);font-weight:400;">Training Readiness</label>
+                    lv_text = f" <span style='font-size:0.85rem;opacity:0.6;font-weight:normal;'>({lv})</span>" if lv else ""
+                    st.markdown(f"""<div>
+<label style="font-size:0.875rem;opacity:0.6;font-weight:400;">Training Readiness</label>
 <div style="font-size:2.25rem;font-weight:700;line-height:1.2;">{int(v)}{lv_text}</div>
 </div>""", unsafe_allow_html=True)
                 else:
