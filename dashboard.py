@@ -122,7 +122,7 @@ with tab_overview:
             latest = hdf_all.iloc[-1]
             st.header(f"Latest Status ({str(latest['date'])[:10]})")
             st.caption("가민 워치에서 측정한 최근 신체 상태 요약입니다.")
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
+            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
             with c1:
                 v = latest.get('training_readiness')
                 lv = latest.get('training_readiness_level', '')
@@ -134,12 +134,15 @@ with tab_overview:
                 v = latest.get('resting_hr')
                 st.metric("Resting HR", f"{int(v)} bpm" if pd.notna(v) else "N/A")
             with c4:
-                v = latest.get('body_battery_max')
-                st.metric("Body Battery", f"{int(v)}" if pd.notna(v) else "N/A")
+                v = latest.get('body_battery_level')
+                st.metric("Battery Level", f"{int(v)}" if pd.notna(v) else "N/A")
             with c5:
+                v = latest.get('body_battery_charged')
+                st.metric("Battery Charged", f"{int(v)}" if pd.notna(v) else "N/A")
+            with c6:
                 v = latest.get('avg_stress')
                 st.metric("Avg Stress", f"{int(v)}" if pd.notna(v) else "N/A")
-            with c6:
+            with c7:
                 v = latest.get('steps')
                 st.metric("Steps", f"{int(v):,}" if pd.notna(v) else "N/A")
 
@@ -151,7 +154,7 @@ with tab_overview:
             date_to = hdf['date'].max().strftime('%m/%d')
             st.header(f"Period Average ({date_from} ~ {date_to})")
             st.caption("선택한 기간의 평균 지표입니다. 최신값과 비교하여 ▲ 상승 / ▼ 하락을 표시합니다.")
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
+            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
 
             # latest 값 가져오기 (비교용)
             lt = hdf_all.iloc[-1] if not hdf_all.empty else {}
@@ -173,17 +176,22 @@ with tab_overview:
                 st.metric("Avg Resting HR", f"{avg_v:.0f} bpm" if pd.notna(avg_v) else "N/A",
                           delta=delta, delta_color="inverse")
             with c4:
-                avg_v = hdf['body_battery_max'].mean()
-                lt_v = lt.get('body_battery_max') if isinstance(lt, pd.Series) else None
+                avg_v = hdf['body_battery_level'].mean()
+                lt_v = lt.get('body_battery_level') if isinstance(lt, pd.Series) else None
                 delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
-                st.metric("Avg Battery", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+                st.metric("Avg Battery Level", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
             with c5:
+                avg_v = hdf['body_battery_charged'].mean()
+                lt_v = lt.get('body_battery_charged') if isinstance(lt, pd.Series) else None
+                delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
+                st.metric("Avg Charged", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
+            with c6:
                 avg_v = hdf['avg_stress'].mean()
                 lt_v = lt.get('avg_stress') if isinstance(lt, pd.Series) else None
                 delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
                 st.metric("Avg Stress", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A",
                           delta=delta, delta_color="inverse")
-            with c6:
+            with c7:
                 avg_v = hdf['steps'].mean()
                 lt_v = lt.get('steps') if isinstance(lt, pd.Series) else None
                 delta = f"{lt_v - avg_v:+,.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
@@ -709,11 +717,11 @@ with tab_health:
                 st.plotly_chart(fig, width="stretch")
 
         with col2:
-            bb = hdf[hdf['body_battery_max'].notna()].copy()
+            bb = hdf[hdf['body_battery_charged'].notna()].copy()
             if not bb.empty:
                 fig = go.Figure()
                 # 워터폴 스타일: 충전 - 소모 = 순 변화
-                bb['net'] = bb['body_battery_max'].fillna(0) - bb['body_battery_drain'].fillna(0)
+                bb['net'] = bb['body_battery_charged'].fillna(0) - bb['body_battery_drain'].fillna(0)
                 bb_colors = ['#00CC96' if v >= 0 else '#EF553B' for v in bb['net']]
                 fig.add_trace(go.Bar(
                     x=bb['date'], y=bb['net'], marker_color=bb_colors,
