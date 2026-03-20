@@ -126,9 +126,7 @@ with tab_overview:
             with c1:
                 v = latest.get('training_readiness')
                 lv = latest.get('training_readiness_level', '')
-                st.metric("Training Readiness",
-                          f"{int(v)}" if pd.notna(v) else "N/A",
-                          delta=lv if lv else None, delta_color="off")
+                st.metric("Training Readiness", f"{int(v)} ({lv})" if pd.notna(v) else "N/A")
             with c2:
                 v = latest.get('sleep_score')
                 st.metric("Sleep Score", f"{int(v)}" if pd.notna(v) else "N/A")
