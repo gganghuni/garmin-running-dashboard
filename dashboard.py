@@ -77,8 +77,8 @@ def minutes_to_pace_str(minutes):
 
 
 # ─── 탭 구성 (4개) ────────────────────────────────────────
-tab_overview, tab_run, tab_bike, tab_health = st.tabs([
-    "📊 Overview", "🏃 Running", "🚴 Cycling", "❤️ Health"
+tab_overview, tab_run, tab_bike, tab_health, tab_ai = st.tabs([
+    "📊 Overview", "🏃 Running", "🚴 Cycling", "❤️ Health", "🤖 AI Coach"
 ])
 
 
@@ -774,3 +774,49 @@ with tab_health:
                 fig.update_yaxes(range=[0, 100], title_text="Score")
                 fig.update_layout(height=250, margin=dict(t=20))
                 st.plotly_chart(fig, width="stretch")
+
+
+# ═══════════════════════════════════════════════════════════
+# TAB 4: AI Coach
+# ═══════════════════════════════════════════════════════════
+with tab_ai:
+    ai_conn = get_connection()
+    try:
+        ai_tables = pd.read_sql_query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_analysis'", ai_conn)
+        if ai_tables.empty:
+            st.warning("AI 분석 데이터가 없습니다. `python scripts/ai_analyzer.py`를 실행하세요.")
+        else:
+            # 분석 가능한 날짜 목록
+            dates = pd.read_sql_query(
+                "SELECT DISTINCT date FROM ai_analysis ORDER BY date DESC", ai_conn)
+
+            if dates.empty:
+                st.warning("AI 분석 데이터가 없습니다.")
+            else:
+                latest_date = dates.iloc[0]['d'] if 'd' in dates.columns else dates.iloc[0]['date']
+
+                st.sidebar.header("🤖 AI Coach Filters")
+                selected_date = st.sidebar.selectbox(
+                    "분석 날짜 선택", dates['date'].tolist(), index=0, key="ai_date")
+
+                st.header(f"🤖 AI Coach Report ({selected_date})")
+                st.caption("Gemini AI가 가민 데이터를 기반으로 분석한 코칭 리포트입니다.")
+
+                ai_tab1, ai_tab2, ai_tab3 = st.tabs(["📅 일간 분석", "📊 주간 분석", "📈 월간 분석"])
+
+                labels = {"daily": "일간", "weekly": "주간", "monthly": "월간"}
+
+                for tab, atype in [(ai_tab1, "daily"), (ai_tab2, "weekly"), (ai_tab3, "monthly")]:
+                    with tab:
+                        row = pd.read_sql_query(
+                            "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                            ai_conn, params=[selected_date, atype])
+                        if not row.empty:
+                            st.markdown(row.iloc[0]['content'])
+                            st.divider()
+                            st.caption(f"🕐 분석 시간: {row.iloc[0]['created_at']}")
+                        else:
+                            st.info(f"{labels[atype]} 분석 데이터가 없습니다.")
+    except Exception as e:
+        st.warning(f"AI 분석 로딩 실패: {e}")
