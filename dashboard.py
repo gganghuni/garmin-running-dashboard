@@ -189,8 +189,7 @@ with tab_overview:
             latest = hdf_valid.iloc[-1]
             st.header(f"Latest Status ({str(latest['date'])[:10]})")
             st.caption("가민 워치에서 측정한 최근 신체 상태 요약입니다.")
-            # 1행: 4개
-            c1, c2, c3, c4 = st.columns(4)
+            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
             with c1:
                 v = latest.get('training_readiness')
                 lv = latest.get('training_readiness_level', '')
@@ -217,8 +216,6 @@ with tab_overview:
             with c4:
                 v = latest.get('body_battery_level')
                 st.metric("Battery Level", f"{int(v)}" if pd.notna(v) else "N/A")
-            # 2행: 3개
-            c5, c6, c7 = st.columns(3)
             with c5:
                 v = latest.get('body_battery_charged')
                 st.metric("Battery Charged", f"{int(v)}" if pd.notna(v) else "N/A")
@@ -241,8 +238,7 @@ with tab_overview:
             # latest 값 가져오기 (비교용)
             lt = hdf_all.iloc[-1] if not hdf_all.empty else {}
 
-            # 1행: 4개
-            c1, c2, c3, c4 = st.columns(4)
+            c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
             with c1:
                 avg_v = hdf['training_readiness'].mean()
                 lt_v = lt.get('training_readiness') if isinstance(lt, pd.Series) else None
@@ -264,8 +260,6 @@ with tab_overview:
                 lt_v = lt.get('body_battery_level') if isinstance(lt, pd.Series) else None
                 delta = f"{lt_v - avg_v:+.0f}" if pd.notna(avg_v) and pd.notna(lt_v) else None
                 st.metric("Avg Battery Level", f"{avg_v:.0f}" if pd.notna(avg_v) else "N/A", delta=delta)
-            # 2행: 3개
-            c5, c6, c7 = st.columns(3)
             with c5:
                 avg_v = hdf['body_battery_charged'].mean()
                 lt_v = lt.get('body_battery_charged') if isinstance(lt, pd.Series) else None
@@ -406,11 +400,10 @@ with tab_overview:
         cyc_all = load_cycling_data()
         run_km = run_all['total_distance_km'].sum() if not run_all.empty else 0
         bike_km = cyc_all['total_distance_km'].sum() if not cyc_all.empty else 0
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4, c5 = st.columns(5)
         with c1: st.metric("Total Runs", len(run_all) if not run_all.empty else 0)
         with c2: st.metric("Run Distance", f"{run_km:.0f} km")
         with c3: st.metric("Total Rides", len(cyc_all) if not cyc_all.empty else 0)
-        c4, c5 = st.columns(2)
         with c4: st.metric("Bike Distance", f"{bike_km:.0f} km")
         with c5: st.metric("Total Distance", f"{run_km + bike_km:.0f} km")
 
