@@ -472,6 +472,9 @@ with tab_run:
             st.warning("No data for the selected filters.")
         else:
             # Summary
+            run_from = df['activity_date'].min().strftime('%m/%d')
+            run_to = df['activity_date'].max().strftime('%m/%d')
+            st.caption(f"📅 {run_from} ~ {run_to}")
             c1, c2, c3, c4 = st.columns(4)
             z2 = df[(df['zone2_avg_pace_min_km'].notna()) & (df['zone2_ratio'] >= 30)].copy()
             hr = df[df['hr_drift_percent'].notna()].copy()
@@ -597,6 +600,9 @@ with tab_bike:
             st.warning("No data for the selected filters.")
         else:
             # Summary
+            bike_from = cdf['activity_date'].min().strftime('%m/%d')
+            bike_to = cdf['activity_date'].max().strftime('%m/%d')
+            st.caption(f"📅 {bike_from} ~ {bike_to}")
             hr_c = cdf[cdf['hr_drift_percent'].notna()].copy()
             c1, c2, c3, c4 = st.columns(4)
             with c1: st.metric("Total Rides", len(cdf))
