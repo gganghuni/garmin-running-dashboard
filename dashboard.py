@@ -393,6 +393,46 @@ with tab_overview:
                                   legend=dict(orientation="h", yanchor="top", y=-0.15))
                 st.plotly_chart(fig, width="stretch")
 
+        # ─── CTL/ATL/TSB (Intervals.icu) ─────────────
+        try:
+            itv_tables = pd.read_sql_query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='intervals_fitness'", get_connection())
+            if not itv_tables.empty:
+                itv_df = safe_load("SELECT * FROM intervals_fitness ORDER BY date")
+                if not itv_df.empty:
+                    itv_df['date'] = pd.to_datetime(itv_df['date'])
+                    if all_dates and len(ov_range) == 2:
+                        itv_df = itv_df[(itv_df['date'].dt.date >= ov_range[0]) & (itv_df['date'].dt.date <= ov_range[1])]
+                    if not itv_df.empty:
+                        st.header("Fitness (CTL / ATL / TSB)")
+                        st.caption("CTL(체력)이 올라가면 체력 향상, ATL(피로)이 높으면 피로 축적, TSB(컨디션)가 양수면 회복 상태입니다. 레이스 전 TSB를 +5~+15로 맞추는 것이 이상적입니다.")
+                        fig = go.Figure()
+                        if itv_df['ctl'].notna().any():
+                            fig.add_trace(go.Scatter(
+                                x=itv_df['date'], y=itv_df['ctl'], mode='lines',
+                                name='CTL (체력)', line=dict(color='#636EFA', width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>CTL: %{y:.1f}<extra></extra>'
+                            ))
+                        if itv_df['atl'].notna().any():
+                            fig.add_trace(go.Scatter(
+                                x=itv_df['date'], y=itv_df['atl'], mode='lines',
+                                name='ATL (피로)', line=dict(color='#EF553B', width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>ATL: %{y:.1f}<extra></extra>'
+                            ))
+                        if itv_df['tsb'].notna().any():
+                            fig.add_trace(go.Scatter(
+                                x=itv_df['date'], y=itv_df['tsb'], mode='lines',
+                                name='TSB (컨디션)', line=dict(color='#00CC96', width=2),
+                                fill='tozeroy', fillcolor='rgba(0,204,150,0.1)',
+                                hovertemplate='%{x|%Y-%m-%d}<br>TSB: %{y:.1f}<extra></extra>'
+                            ))
+                        fig.add_hline(y=0, line_color="gray", line_width=1)
+                        fig.update_layout(height=400, margin=dict(t=20),
+                                          legend=dict(orientation="h", yanchor="top", y=-0.15))
+                        st.plotly_chart(fig, width="stretch")
+        except Exception:
+            pass
+
         # ─── 총 요약 (전체 기간) ─────────────────────────
         st.divider()
         st.caption("All-Time Summary")
