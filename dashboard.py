@@ -75,7 +75,6 @@ st.markdown("""
 st.title("🏃 GGanghuni's Garmin Analytics Dashboard")
 
 
-@st.cache_resource
 def get_connection():
     return sqlite3.connect(str(DB_PATH), check_same_thread=False)
 
@@ -83,8 +82,11 @@ def get_connection():
 def safe_load(query):
     conn = get_connection()
     try:
-        return pd.read_sql_query(query, conn)
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        return df
     except Exception:
+        conn.close()
         return pd.DataFrame()
 
 
@@ -95,7 +97,7 @@ def add_week_columns(df, date_col='activity_date'):
     return df
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_run_data():
     df = safe_load("SELECT * FROM run_analysis ORDER BY activity_date")
     if 'activity_date' in df.columns:
@@ -104,7 +106,7 @@ def load_run_data():
     return df
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_cycling_data():
     df = safe_load("SELECT * FROM cycling_analysis ORDER BY activity_date")
     if 'activity_date' in df.columns:
@@ -113,7 +115,7 @@ def load_cycling_data():
     return df
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_health_data():
     df = safe_load("SELECT * FROM daily_health ORDER BY date")
     if 'date' in df.columns:
