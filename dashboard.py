@@ -178,10 +178,24 @@ def get_last_updated(query):
 
 
 def show_updated_time(query):
-    """탭 상단에 업데이트 시간 표시"""
+    """탭 상단에 업데이트 시간 표시 (한국시간, 통일 형식)"""
     ts = get_last_updated(query)
     if ts:
-        st.caption(f"🕐 마지막 업데이트: {ts}")
+        try:
+            from datetime import datetime as dt
+            # 다양한 형식 파싱
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S.%f'):
+                try:
+                    parsed = dt.strptime(str(ts), fmt)
+                    formatted = parsed.strftime('%Y-%m-%d %H:%M')
+                    st.caption(f"🕐 마지막 업데이트: {formatted} (KST)")
+                    return
+                except ValueError:
+                    continue
+            # 파싱 실패 시 원문 표시
+            st.caption(f"🕐 마지막 업데이트: {ts}")
+        except Exception:
+            st.caption(f"🕐 마지막 업데이트: {ts}")
 
 
 def minutes_to_pace_str(minutes):
