@@ -444,7 +444,7 @@ with tab_overview:
                         legend=dict(orientation="h", yanchor="top", y=-0.15)
                     )
                     st.plotly_chart(fig, width="stretch")
-                    show_trend(chart_trends, "recovery")
+                    show_trend(chart_trends, "readiness_stress")
 
         # ─── VO2 Max 추이 (영역 차트 + 목표선) ──────────
         if not hdf.empty:
@@ -987,6 +987,7 @@ with tab_health:
                 fig.update_yaxes(title_text="Net Battery (충전 - 소모)")
                 fig.update_layout(height=300, margin=dict(t=30), title="Body Battery (순 충전량)")
                 st.plotly_chart(fig, width="stretch")
+                show_trend(chart_trends, "health_battery")
 
         # 4. Training Readiness (게이지 + 추세)
         st.header("4. Training Readiness")
