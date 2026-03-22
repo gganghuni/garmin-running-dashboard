@@ -181,21 +181,22 @@ def show_updated_time(query):
     """탭 상단에 업데이트 시간 표시 (한국시간, 통일 형식)"""
     ts = get_last_updated(query)
     if ts:
-        try:
-            from datetime import datetime as dt
-            # 다양한 형식 파싱
-            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S.%f'):
-                try:
-                    parsed = dt.strptime(str(ts), fmt)
-                    formatted = parsed.strftime('%Y-%m-%d %H:%M')
-                    st.caption(f"🕐 마지막 업데이트: {formatted} (KST)")
-                    return
-                except ValueError:
-                    continue
-            # 파싱 실패 시 원문 표시
-            st.caption(f"🕐 마지막 업데이트: {ts}")
-        except Exception:
-            st.caption(f"🕐 마지막 업데이트: {ts}")
+        st.caption(f"🕐 마지막 업데이트: {format_kst(ts)}")
+
+
+def format_kst(ts):
+    """타임스탬프를 KST 통일 형식으로 변환"""
+    try:
+        from datetime import datetime as dt
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S.%f'):
+            try:
+                parsed = dt.strptime(str(ts), fmt)
+                return parsed.strftime('%Y-%m-%d %H:%M') + " (KST)"
+            except ValueError:
+                continue
+    except Exception:
+        pass
+    return str(ts)
 
 
 def minutes_to_pace_str(minutes):
@@ -1152,31 +1153,50 @@ with tab_ai:
                             with col_left:
                                 st.subheader(f"📌 {selected_date}")
                                 row = pd.read_sql_query(
-                                    "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                    "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                     ai_conn, params=[selected_date, atype])
+                                if row.empty and atype in ("weekly", "monthly"):
+                                    row = pd.read_sql_query(
+                                        "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
+                                        ai_conn, params=[selected_date, atype])
                                 if not row.empty:
+                                    if row.iloc[0]['date'] != selected_date:
+                                        st.caption(f"📅 {row.iloc[0]['date']} 기준 (가장 최근)")
                                     st.markdown(row.iloc[0]['content'])
-                                    st.caption(f"🕐 {row.iloc[0]['created_at']}")
+                                    st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
                                 else:
                                     st.info(f"{labels[atype]} 분석 없음")
                             with col_right:
                                 st.subheader(f"📌 {compare_date}")
                                 row2 = pd.read_sql_query(
-                                    "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                    "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                     ai_conn, params=[compare_date, atype])
+                                if row2.empty and atype in ("weekly", "monthly"):
+                                    row2 = pd.read_sql_query(
+                                        "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
+                                        ai_conn, params=[compare_date, atype])
                                 if not row2.empty:
+                                    if row2.iloc[0]['date'] != compare_date:
+                                        st.caption(f"📅 {row2.iloc[0]['date']} 기준 (가장 최근)")
                                     st.markdown(row2.iloc[0]['content'])
-                                    st.caption(f"🕐 {row2.iloc[0]['created_at']}")
+                                    st.caption(f"🕐 분석 시간: {format_kst(row2.iloc[0]['created_at'])}")
                                 else:
                                     st.info(f"{labels[atype]} 분석 없음")
                         else:
                             row = pd.read_sql_query(
-                                "SELECT content, created_at FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                 ai_conn, params=[selected_date, atype])
+                            # 주간/월간: 선택 날짜에 없으면 가장 최근 것 표시
+                            if row.empty and atype in ("weekly", "monthly"):
+                                row = pd.read_sql_query(
+                                    "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
+                                    ai_conn, params=[selected_date, atype])
                             if not row.empty:
+                                if row.iloc[0]['date'] != selected_date:
+                                    st.caption(f"📅 {row.iloc[0]['date']} 기준 (가장 최근)")
                                 st.markdown(row.iloc[0]['content'])
                                 st.divider()
-                                st.caption(f"🕐 분석 시간: {row.iloc[0]['created_at']}")
+                                st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
                             else:
                                 st.info(f"{labels[atype]} 분석 데이터가 없습니다.")
     except Exception as e:
