@@ -579,7 +579,7 @@ with tab_run:
 
             # 1. Zone2 Pace Trend (산점도 + 추세선 유지)
             st.header("1. Zone2 Pace Trend")
-            st.caption("심박수 137-156 bpm 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
+            st.caption("심박수 152-169 bpm 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
             if not z2.empty:
                 z2['rolling_avg'] = z2['pace_minutes'].rolling(window=5, min_periods=2).mean()
                 fig = go.Figure()
@@ -707,7 +707,7 @@ with tab_bike:
 
             # 1. Zone2 Speed Trend (유지)
             st.header("1. Zone2 Speed Trend")
-            st.caption("심박수 120-145 bpm 구간에서의 평균 속도입니다. 숫자가 높을수록 유산소 체력이 좋아진 것입니다. 같은 심박에서 더 빨리 달릴 수 있으면 체력이 향상된 것이에요.")
+            st.caption("심박수 129-148 bpm 구간에서의 평균 속도입니다. 숫자가 높을수록 유산소 체력이 좋아진 것입니다. 같은 심박에서 더 빨리 달릴 수 있으면 체력이 향상된 것이에요.")
             z2c = cdf[(cdf['zone2_avg_speed_kmh'].notna()) & (cdf['zone2_ratio'] >= 20)].copy()
             if not z2c.empty:
                 z2c['rolling_avg'] = z2c['zone2_avg_speed_kmh'].rolling(window=5, min_periods=2).mean()
