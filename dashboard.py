@@ -220,7 +220,13 @@ chart_trends = load_chart_trends()
 # TAB 0: Overview
 # ═══════════════════════════════════════════════════════════
 with tab_overview:
-    show_updated_time("SELECT MAX(collected_at) FROM daily_health")
+    show_updated_time("""
+        SELECT MAX(t) FROM (
+            SELECT MAX(collected_at) as t FROM daily_health
+            UNION ALL SELECT MAX(analyzed_at) as t FROM run_analysis
+            UNION ALL SELECT MAX(analyzed_at) as t FROM cycling_analysis
+        )
+    """)
     run_df = load_run_data()
     cyc_df = load_cycling_data()
     hdf = load_health_data()
