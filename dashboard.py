@@ -160,6 +160,30 @@ def show_trend(trends, key):
         st.markdown(f"<div style='padding:0.3rem 0.5rem;border-radius:0.3rem;background:rgba(99,110,250,0.08);font-size:0.85rem;'>{trends[key]}</div>", unsafe_allow_html=True)
 
 
+def get_last_updated(query):
+    """DB에서 최근 업데이트 시간 조회"""
+    conn = get_connection()
+    try:
+        row = pd.read_sql_query(query, conn)
+        conn.close()
+        if not row.empty and row.iloc[0][0]:
+            return row.iloc[0][0]
+    except Exception:
+        pass
+    try:
+        conn.close()
+    except:
+        pass
+    return None
+
+
+def show_updated_time(query):
+    """탭 상단에 업데이트 시간 표시"""
+    ts = get_last_updated(query)
+    if ts:
+        st.caption(f"🕐 마지막 업데이트: {ts}")
+
+
 def minutes_to_pace_str(minutes):
     if pd.isna(minutes):
         return ""
@@ -181,6 +205,7 @@ chart_trends = load_chart_trends()
 # TAB 0: Overview
 # ═══════════════════════════════════════════════════════════
 with tab_overview:
+    show_updated_time("SELECT MAX(collected_at) FROM daily_health")
     run_df = load_run_data()
     cyc_df = load_cycling_data()
     hdf = load_health_data()
@@ -489,6 +514,7 @@ with tab_overview:
 # TAB 1: Running Analysis
 # ═══════════════════════════════════════════════════════════
 with tab_run:
+    show_updated_time("SELECT MAX(analyzed_at) FROM run_analysis")
     df = load_run_data()
     if df.empty:
         st.warning("러닝 분석 데이터가 없습니다.")
@@ -621,6 +647,7 @@ with tab_run:
 # TAB 2: Cycling Analysis
 # ═══════════════════════════════════════════════════════════
 with tab_bike:
+    show_updated_time("SELECT MAX(analyzed_at) FROM cycling_analysis")
     cdf = load_cycling_data()
     if cdf.empty:
         st.warning("사이클링 분석 데이터가 없습니다.")
@@ -845,6 +872,7 @@ with tab_bike:
 # TAB 3: Health
 # ═══════════════════════════════════════════════════════════
 with tab_health:
+    show_updated_time("SELECT MAX(collected_at) FROM daily_health")
     hdf = load_health_data()
     if hdf.empty:
         st.warning("건강 데이터가 없습니다. `python scripts/main.py --health`를 실행하세요.")
@@ -1067,6 +1095,7 @@ with tab_health:
 # TAB 4: AI Coach
 # ═══════════════════════════════════════════════════════════
 with tab_ai:
+    show_updated_time("SELECT MAX(created_at) FROM ai_analysis")
     ai_conn = get_connection()
     try:
         ai_tables = pd.read_sql_query(
