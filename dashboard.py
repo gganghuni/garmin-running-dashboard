@@ -1117,7 +1117,6 @@ with tab_health:
 # TAB 4: AI Coach
 # ═══════════════════════════════════════════════════════════
 with tab_ai:
-    show_updated_time("SELECT MAX(created_at) FROM ai_analysis")
     ai_conn = get_connection()
     try:
         ai_tables = pd.read_sql_query(
@@ -1167,10 +1166,10 @@ with tab_ai:
                                         "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                         ai_conn, params=[selected_date, atype])
                                 if not row.empty:
+                                    st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
                                     if row.iloc[0]['date'] != selected_date:
                                         st.caption(f"📅 {row.iloc[0]['date']} 기준 (가장 최근)")
                                     st.markdown(row.iloc[0]['content'])
-                                    st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
                                 else:
                                     st.info(f"{labels[atype]} 분석 없음")
                             with col_right:
@@ -1183,27 +1182,25 @@ with tab_ai:
                                         "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                         ai_conn, params=[compare_date, atype])
                                 if not row2.empty:
+                                    st.caption(f"🕐 분석 시간: {format_kst(row2.iloc[0]['created_at'])}")
                                     if row2.iloc[0]['date'] != compare_date:
                                         st.caption(f"📅 {row2.iloc[0]['date']} 기준 (가장 최근)")
                                     st.markdown(row2.iloc[0]['content'])
-                                    st.caption(f"🕐 분석 시간: {format_kst(row2.iloc[0]['created_at'])}")
                                 else:
                                     st.info(f"{labels[atype]} 분석 없음")
                         else:
                             row = pd.read_sql_query(
                                 "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                 ai_conn, params=[selected_date, atype])
-                            # 주간/월간: 선택 날짜에 없으면 가장 최근 것 표시
                             if row.empty and atype in ("weekly", "monthly"):
                                 row = pd.read_sql_query(
                                     "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                     ai_conn, params=[selected_date, atype])
                             if not row.empty:
+                                st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
                                 if row.iloc[0]['date'] != selected_date:
                                     st.caption(f"📅 {row.iloc[0]['date']} 기준 (가장 최근)")
                                 st.markdown(row.iloc[0]['content'])
-                                st.divider()
-                                st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
                             else:
                                 st.info(f"{labels[atype]} 분석 데이터가 없습니다.")
     except Exception as e:
