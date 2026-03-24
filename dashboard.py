@@ -154,6 +154,28 @@ def load_chart_trends():
     return {}
 
 
+def load_ftp():
+    """Intervals.icu에서 수집한 FTP 로드 (없으면 기본값 184W)"""
+    conn = get_connection()
+    try:
+        tables = pd.read_sql_query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='intervals_settings'", conn)
+        if not tables.empty:
+            row = pd.read_sql_query(
+                "SELECT ftp FROM intervals_settings WHERE sport='cycling' AND ftp IS NOT NULL ORDER BY collected_at DESC LIMIT 1",
+                conn)
+            conn.close()
+            if not row.empty:
+                return int(row.iloc[0]['ftp'])
+    except Exception:
+        pass
+    try:
+        conn.close()
+    except:
+        pass
+    return 184  # 기본값
+
+
 def show_trend(trends, key):
     """차트 아래에 AI 추세 요약 표시"""
     if trends and key in trends:
@@ -214,6 +236,7 @@ tab_overview, tab_run, tab_bike, tab_health, tab_ai = st.tabs([
 
 # 차트 추세 데이터 로드 (1회)
 chart_trends = load_chart_trends()
+CYCLING_FTP = load_ftp()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -815,14 +838,15 @@ with tab_bike:
 
                 # 6. Power Zone Distribution (도넛 차트)
                 st.header("6. Power Zone Distribution")
-                st.caption("라이드별 평균 파워 기준 강도 분류입니다. Z2(지구력) 비중이 높으면 베이스 훈련을 잘 하고 있는 것입니다.")
+                st.caption(f"라이드별 평균 파워를 FTP({CYCLING_FTP}W) 기준 Coggan 파워존으로 분류한 것입니다. Z2(지구력) 비중이 높으면 베이스 훈련을 잘 하고 있는 것입니다.")
                 pwr_rides = cdf[cdf['avg_power'].notna()].copy()
                 if not pwr_rides.empty:
+                    _ftp = CYCLING_FTP
                     def power_zone_label(p):
-                        if p < 100: return 'Z1 Recovery'
-                        elif p < 150: return 'Z2 Endurance'
-                        elif p < 200: return 'Z3 Tempo'
-                        elif p < 250: return 'Z4 Threshold'
+                        if p < _ftp * 0.55: return 'Z1 Recovery'
+                        elif p < _ftp * 0.75: return 'Z2 Endurance'
+                        elif p < _ftp * 0.90: return 'Z3 Tempo'
+                        elif p < _ftp * 1.05: return 'Z4 Threshold'
                         else: return 'Z5+ VO2max'
 
                     pwr_rides['power_zone'] = pwr_rides['avg_power'].apply(power_zone_label)
@@ -848,24 +872,27 @@ with tab_bike:
                 ftp_rides = cdf[(cdf['normalized_power'].notna()) & (cdf['total_duration_sec'] >= 1200)].copy()
                 if not ftp_rides.empty:
                     st.header("7. Estimated FTP Trend")
-                    st.caption("20분 이상 라이딩의 NP × 0.95로 추정한 FTP입니다. 누적 최고값이 올라가면 체력이 향상된 것입니다.")
+                    st.caption(f"20분 이상 라이딩의 NP × 0.95로 추정한 FTP입니다. 초록 점선이 Intervals.icu FTP({CYCLING_FTP}W)이며, 추정값이 이에 근접하면 정확한 추정입니다.")
                     ftp_rides['est_ftp'] = (ftp_rides['normalized_power'] * 0.95).round(0)
                     # 누적 최고 FTP
                     ftp_rides['best_ftp'] = ftp_rides['est_ftp'].cummax()
                     fig = go.Figure()
                     fig.add_trace(go.Scatter(
                         x=ftp_rides['activity_date'], y=ftp_rides['est_ftp'], mode='markers',
-                        name='라이드별 FTP', marker=dict(size=7, color='#636EFA'),
-                        hovertemplate='%{x|%Y-%m-%d}<br>FTP: %{y:.0f}W<br>NP: %{customdata:.0f}W<extra></extra>',
+                        name='라이드별 추정 FTP', marker=dict(size=7, color='#636EFA'),
+                        hovertemplate='%{x|%Y-%m-%d}<br>추정 FTP: %{y:.0f}W<br>NP: %{customdata:.0f}W<extra></extra>',
                         customdata=ftp_rides['normalized_power']
                     ))
                     fig.add_trace(go.Scatter(
                         x=ftp_rides['activity_date'], y=ftp_rides['best_ftp'], mode='lines',
-                        name='Best FTP', line=dict(color='#EF553B', width=2, dash='dash')
+                        name='Best 추정 FTP', line=dict(color='#EF553B', width=2, dash='dash')
                     ))
+                    # 가민 설정 FTP 기준선
+                    fig.add_hline(y=CYCLING_FTP, line_dash="dash", line_color="green",
+                                  annotation_text=f"FTP: {CYCLING_FTP}W", annotation_position="top left")
                     current_ftp = ftp_rides['best_ftp'].iloc[-1]
                     fig.add_annotation(x=ftp_rides['activity_date'].iloc[-1], y=current_ftp,
-                                       text=f"  현재 FTP: {current_ftp:.0f}W", showarrow=False,
+                                       text=f"  추정 FTP: {current_ftp:.0f}W", showarrow=False,
                                        xanchor='left', font=dict(color='#EF553B', size=12))
                     fig.update_yaxes(title_text="FTP (W)")
                     fig.update_layout(height=400, margin=dict(t=20),
