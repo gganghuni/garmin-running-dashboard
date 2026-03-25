@@ -745,6 +745,7 @@ with tab_run:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "run_gct")
 
             # 6. GCT Balance
             if 'avg_stance_time_balance' in df.columns:
@@ -760,6 +761,7 @@ with tab_run:
                     fig.update_yaxes(title_text="%", range=[47, 53])
                     fig.update_layout(height=350, margin=dict(t=20))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "run_gct_balance")
 
             # 7. Vertical Oscillation & Ratio
             if 'avg_vertical_oscillation' in df.columns:
@@ -782,6 +784,7 @@ with tab_run:
                     fig.update_layout(height=400, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "run_vertical")
 
             # 8. Running Power Trend
             if 'avg_power' in df.columns:
@@ -803,6 +806,7 @@ with tab_run:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "run_power")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1054,6 +1058,7 @@ with tab_bike:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_lr_balance")
 
             # 10. Torque Effectiveness
             if 'left_torque_eff' in cdf.columns:
@@ -1073,6 +1078,7 @@ with tab_bike:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_torque_eff")
 
             # 11. Pedal Smoothness
             if 'left_smoothness' in cdf.columns:
@@ -1092,6 +1098,7 @@ with tab_bike:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_smoothness")
 
             # 12. TSS & IF Trend
             if 'tss' in cdf.columns:
@@ -1114,6 +1121,7 @@ with tab_bike:
                     fig.update_layout(height=400, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_tss_if")
 
 
 # ═══════════════════════════════════════════════════════════
