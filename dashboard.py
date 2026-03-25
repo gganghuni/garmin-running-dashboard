@@ -1173,7 +1173,7 @@ with tab_ai:
                     st.caption("두 날짜의 AI 분석을 나란히 비교합니다.")
                 else:
                     st.header(f"🤖 AI Coach Report ({selected_date})")
-                    st.caption("Gemini AI가 가민 데이터를 기반으로 분석한 코칭 리포트입니다.")
+                    st.caption("AI가 가민 데이터를 기반으로 분석한 코칭 리포트입니다.")
 
                 ai_tab1, ai_tab2, ai_tab3 = st.tabs(["📅 일간 분석", "📊 주간 분석", "📈 월간 분석"])
 
