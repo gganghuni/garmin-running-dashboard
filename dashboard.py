@@ -728,8 +728,8 @@ with tab_run:
                 st.info("최근 8km 이상 장거리 러닝 기록이 없습니다.")
 
             # 5. Ground Contact Time (GCT)
-            if 'avg_stance_time' in rdf.columns:
-                gct = rdf[rdf['avg_stance_time'].notna()].copy()
+            if 'avg_stance_time' in df.columns:
+                gct = df[df['avg_stance_time'].notna()].copy()
                 if not gct.empty:
                     st.header("5. Ground Contact Time")
                     st.caption("지면 접촉 시간(ms)입니다. 짧을수록 효율적인 러닝 폼이에요. 엘리트: 200-220ms, 일반: 240-300ms, 초보: 300ms+")
@@ -747,8 +747,8 @@ with tab_run:
                     st.plotly_chart(fig, width="stretch")
 
             # 6. GCT Balance
-            if 'avg_stance_time_balance' in rdf.columns:
-                gb = rdf[rdf['avg_stance_time_balance'].notna()].copy()
+            if 'avg_stance_time_balance' in df.columns:
+                gb = df[df['avg_stance_time_balance'].notna()].copy()
                 if not gb.empty:
                     st.header("6. GCT Balance")
                     st.caption("좌우 지면 접촉 시간 밸런스(%)입니다. 50%에 가까울수록 균형 잡힌 폼이에요. 표시 값은 왼발 비율이며, 49.5-50.5% 범위가 이상적입니다.")
@@ -762,8 +762,8 @@ with tab_run:
                     st.plotly_chart(fig, width="stretch")
 
             # 7. Vertical Oscillation & Ratio
-            if 'avg_vertical_oscillation' in rdf.columns:
-                vo = rdf[rdf['avg_vertical_oscillation'].notna()].copy()
+            if 'avg_vertical_oscillation' in df.columns:
+                vo = df[df['avg_vertical_oscillation'].notna()].copy()
                 if not vo.empty:
                     st.header("7. Vertical Oscillation & Ratio")
                     st.caption("상하 진동(mm)과 수직 비율(%)입니다. 낮을수록 효율적이에요. 우수: 진동 60-80mm / 비율 6-8%, 엘리트: 진동 <60mm / 비율 <6%")
@@ -784,8 +784,8 @@ with tab_run:
                     st.plotly_chart(fig, width="stretch")
 
             # 8. Running Power Trend
-            if 'avg_power' in rdf.columns:
-                rp = rdf[rdf['avg_power'].notna()].copy()
+            if 'avg_power' in df.columns:
+                rp = df[df['avg_power'].notna()].copy()
                 if not rp.empty:
                     st.header("8. Running Power Trend")
                     st.caption("러닝 파워(W)입니다. 같은 페이스에서 파워가 낮아지면 러닝 효율이 개선된 것이에요. Avg Power는 평균, NP는 변동 보정 실질 강도입니다.")
