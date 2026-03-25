@@ -176,6 +176,28 @@ def load_ftp():
     return 184  # 기본값
 
 
+def load_cycling_lthr():
+    """Intervals.icu에서 수집한 사이클링 LTHR 로드 (없으면 191)"""
+    conn = get_connection()
+    try:
+        tables = pd.read_sql_query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='intervals_settings'", conn)
+        if not tables.empty:
+            row = pd.read_sql_query(
+                "SELECT lthr FROM intervals_settings WHERE sport='cycling' AND lthr IS NOT NULL ORDER BY collected_at DESC LIMIT 1",
+                conn)
+            conn.close()
+            if not row.empty:
+                return int(row.iloc[0]['lthr'])
+    except Exception:
+        pass
+    try:
+        conn.close()
+    except:
+        pass
+    return 191  # 기본값
+
+
 def show_trend(trends, key):
     """차트 아래에 AI 추세 요약 표시"""
     if trends and key in trends:
@@ -237,6 +259,9 @@ tab_overview, tab_run, tab_bike, tab_health, tab_ai = st.tabs([
 # 차트 추세 데이터 로드 (1회)
 chart_trends = load_chart_trends()
 CYCLING_FTP = load_ftp()
+CYCLING_LTHR = load_cycling_lthr()
+CYCLING_Z2_LOW = round(CYCLING_LTHR * 0.68)
+CYCLING_Z2_HIGH = round(CYCLING_LTHR * 0.83)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -730,7 +755,7 @@ with tab_bike:
 
             # 1. Zone2 Speed Trend (유지)
             st.header("1. Zone2 Speed Trend")
-            st.caption("심박수 129-148 bpm 구간에서의 평균 속도입니다. 숫자가 높을수록 유산소 체력이 좋아진 것입니다. 같은 심박에서 더 빨리 달릴 수 있으면 체력이 향상된 것이에요.")
+            st.caption(f"심박수 {CYCLING_Z2_LOW}-{CYCLING_Z2_HIGH} bpm(Coggan Z2) 구간에서의 평균 속도입니다. 숫자가 높을수록 유산소 체력이 좋아진 것입니다. 같은 심박에서 더 빨리 달릴 수 있으면 체력이 향상된 것이에요.")
             z2c = cdf[(cdf['zone2_avg_speed_kmh'].notna()) & (cdf['zone2_ratio'] >= 20)].copy()
             if not z2c.empty:
                 z2c['rolling_avg'] = z2c['zone2_avg_speed_kmh'].rolling(window=5, min_periods=2).mean()
