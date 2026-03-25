@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import sqlite3
 from pathlib import Path
 from datetime import timedelta
@@ -883,19 +884,22 @@ with tab_bike:
                 if not pwr_rides.empty:
                     _ftp = CYCLING_FTP
                     def power_zone_label(p):
-                        if p < _ftp * 0.55: return 'Z1 Recovery'
+                        if p < _ftp * 0.55: return 'Z1 Active Recovery'
                         elif p < _ftp * 0.75: return 'Z2 Endurance'
                         elif p < _ftp * 0.90: return 'Z3 Tempo'
                         elif p < _ftp * 1.05: return 'Z4 Threshold'
-                        else: return 'Z5+ VO2max'
+                        elif p < _ftp * 1.20: return 'Z5 VO2max'
+                        elif p < _ftp * 1.50: return 'Z6 Anaerobic'
+                        else: return 'Z7 Neuromuscular'
 
                     pwr_rides['power_zone'] = pwr_rides['avg_power'].apply(power_zone_label)
                     zone_counts = pwr_rides['power_zone'].value_counts().reset_index()
                     zone_counts.columns = ['zone', 'count']
-                    zone_order = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5+ VO2max']
+                    zone_order = ['Z1 Active Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO2max', 'Z6 Anaerobic', 'Z7 Neuromuscular']
                     zone_colors = {
-                        'Z1 Recovery': '#00CC96', 'Z2 Endurance': '#636EFA',
-                        'Z3 Tempo': '#FFA15A', 'Z4 Threshold': '#EF553B', 'Z5+ VO2max': '#AB63FA'
+                        'Z1 Active Recovery': '#00CC96', 'Z2 Endurance': '#636EFA',
+                        'Z3 Tempo': '#FFA15A', 'Z4 Threshold': '#EF553B',
+                        'Z5 VO2max': '#AB63FA', 'Z6 Anaerobic': '#FF6692', 'Z7 Neuromuscular': '#B6E880'
                     }
                     zone_counts['zone'] = pd.Categorical(zone_counts['zone'], categories=zone_order, ordered=True)
                     zone_counts = zone_counts.sort_values('zone')
@@ -954,6 +958,85 @@ with tab_bike:
                     fig.update_layout(height=400, margin=dict(t=20))
                     st.plotly_chart(fig, width="stretch")
                     show_trend(chart_trends, "cycle_speed_stability")
+
+            # 9. L/R Power Balance
+            if 'left_balance' in cdf.columns:
+                lb = cdf[cdf['left_balance'].notna()].copy()
+                if not lb.empty:
+                    st.header("9. L/R Power Balance")
+                    st.caption("좌우 파워 밸런스입니다. 50/50에 가까울수록 균형 잡힌 페달링입니다. 2% 이내 차이는 정상 범위예요.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=lb['activity_date'], y=lb['left_balance'], mode='lines+markers',
+                        name='Left', marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>L: %{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Scatter(x=lb['activity_date'], y=lb['right_balance'], mode='lines+markers',
+                        name='Right', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>R: %{y:.1f}%<extra></extra>'))
+                    fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+                    fig.update_yaxes(title_text="%", range=[45, 55])
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 10. Torque Effectiveness
+            if 'left_torque_eff' in cdf.columns:
+                te = cdf[cdf['left_torque_eff'].notna()].copy()
+                if not te.empty:
+                    st.header("10. Torque Effectiveness")
+                    st.caption("페달 스트로크 중 실제 추진력으로 전환되는 토크 비율입니다. 높을수록 효율적인 페달링이에요. 70% 이상이면 우수합니다.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=te['activity_date'], y=te['left_torque_eff'], mode='lines+markers',
+                        name='Left', marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>L: %{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Scatter(x=te['activity_date'], y=te['right_torque_eff'], mode='lines+markers',
+                        name='Right', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>R: %{y:.1f}%<extra></extra>'))
+                    fig.add_hline(y=70, line_dash="dash", line_color="green", annotation_text="70% (우수)")
+                    fig.update_yaxes(title_text="%")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 11. Pedal Smoothness
+            if 'left_smoothness' in cdf.columns:
+                ps = cdf[cdf['left_smoothness'].notna()].copy()
+                if not ps.empty:
+                    st.header("11. Pedal Smoothness")
+                    st.caption("페달 스트로크 전체에서 파워가 얼마나 고르게 분배되는지입니다. 높을수록 부드러운 페달링이에요. 25% 이상이면 우수합니다.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=ps['activity_date'], y=ps['left_smoothness'], mode='lines+markers',
+                        name='Left', marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>L: %{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Scatter(x=ps['activity_date'], y=ps['right_smoothness'], mode='lines+markers',
+                        name='Right', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>R: %{y:.1f}%<extra></extra>'))
+                    fig.add_hline(y=25, line_dash="dash", line_color="green", annotation_text="25% (우수)")
+                    fig.update_yaxes(title_text="%")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 12. TSS & IF Trend
+            if 'tss' in cdf.columns:
+                ti = cdf[cdf['tss'].notna()].copy()
+                if not ti.empty:
+                    st.header("12. TSS & IF Trend")
+                    st.caption("TSS(Training Stress Score)는 훈련 부하, IF(Intensity Factor)는 FTP 대비 강도입니다. IF 0.75 이상이면 중강도, 0.90 이상이면 고강도 훈련이에요.")
+                    fig = make_subplots(specs=[[{"secondary_y": True}]])
+                    fig.add_trace(go.Bar(x=ti['activity_date'], y=ti['tss'], name='TSS',
+                        marker_color='#FFA15A', opacity=0.6,
+                        hovertemplate='%{x|%Y-%m-%d}<br>TSS: %{y:.0f}<extra></extra>'), secondary_y=False)
+                    if 'intensity_factor' in ti.columns:
+                        ti_if = ti[ti['intensity_factor'].notna()]
+                        if not ti_if.empty:
+                            fig.add_trace(go.Scatter(x=ti_if['activity_date'], y=ti_if['intensity_factor'],
+                                mode='lines+markers', name='IF', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>IF: %{y:.2f}<extra></extra>'), secondary_y=True)
+                    fig.update_yaxes(title_text="TSS", secondary_y=False)
+                    fig.update_yaxes(title_text="IF", secondary_y=True)
+                    fig.update_layout(height=400, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
 
 
 # ═══════════════════════════════════════════════════════════
