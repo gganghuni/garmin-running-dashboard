@@ -727,6 +727,83 @@ with tab_run:
             else:
                 st.info("최근 8km 이상 장거리 러닝 기록이 없습니다.")
 
+            # 5. Ground Contact Time (GCT)
+            if 'avg_stance_time' in rdf.columns:
+                gct = rdf[rdf['avg_stance_time'].notna()].copy()
+                if not gct.empty:
+                    st.header("5. Ground Contact Time")
+                    st.caption("지면 접촉 시간(ms)입니다. 짧을수록 효율적인 러닝 폼이에요. 엘리트: 200-220ms, 일반: 240-300ms, 초보: 300ms+")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=gct['activity_date'], y=gct['avg_stance_time'], mode='lines+markers',
+                        marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>GCT: %{y:.0f}ms<extra></extra>'))
+                    if len(gct) >= 5:
+                        gct['rolling'] = gct['avg_stance_time'].rolling(5, min_periods=1).mean()
+                        fig.add_trace(go.Scatter(x=gct['activity_date'], y=gct['rolling'], mode='lines',
+                            name='5-run avg', line=dict(color='#EF553B', width=2)))
+                    fig.update_yaxes(title_text="GCT (ms)")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 6. GCT Balance
+            if 'avg_stance_time_balance' in rdf.columns:
+                gb = rdf[rdf['avg_stance_time_balance'].notna()].copy()
+                if not gb.empty:
+                    st.header("6. GCT Balance")
+                    st.caption("좌우 지면 접촉 시간 밸런스(%)입니다. 50%에 가까울수록 균형 잡힌 폼이에요. 표시 값은 왼발 비율이며, 49.5-50.5% 범위가 이상적입니다.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=gb['activity_date'], y=gb['avg_stance_time_balance'], mode='lines+markers',
+                        marker=dict(size=6, color='#AB63FA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>L: %{y:.1f}%<extra></extra>'))
+                    fig.add_hline(y=50, line_dash="dash", line_color="gray", annotation_text="50%")
+                    fig.update_yaxes(title_text="%", range=[47, 53])
+                    fig.update_layout(height=350, margin=dict(t=20))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 7. Vertical Oscillation & Ratio
+            if 'avg_vertical_oscillation' in rdf.columns:
+                vo = rdf[rdf['avg_vertical_oscillation'].notna()].copy()
+                if not vo.empty:
+                    st.header("7. Vertical Oscillation & Ratio")
+                    st.caption("상하 진동(mm)과 수직 비율(%)입니다. 낮을수록 효율적이에요. 우수: 진동 60-80mm / 비율 6-8%, 엘리트: 진동 <60mm / 비율 <6%")
+                    fig = make_subplots(specs=[[{"secondary_y": True}]])
+                    fig.add_trace(go.Scatter(x=vo['activity_date'], y=vo['avg_vertical_oscillation'], mode='lines+markers',
+                        name='진동 (mm)', marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>진동: %{y:.1f}mm<extra></extra>'), secondary_y=False)
+                    if 'avg_vertical_ratio' in vo.columns:
+                        vr = vo[vo['avg_vertical_ratio'].notna()]
+                        if not vr.empty:
+                            fig.add_trace(go.Scatter(x=vr['activity_date'], y=vr['avg_vertical_ratio'], mode='lines+markers',
+                                name='비율 (%)', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>비율: %{y:.1f}%<extra></extra>'), secondary_y=True)
+                    fig.update_yaxes(title_text="진동 (mm)", secondary_y=False)
+                    fig.update_yaxes(title_text="비율 (%)", secondary_y=True)
+                    fig.update_layout(height=400, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 8. Running Power Trend
+            if 'avg_power' in rdf.columns:
+                rp = rdf[rdf['avg_power'].notna()].copy()
+                if not rp.empty:
+                    st.header("8. Running Power Trend")
+                    st.caption("러닝 파워(W)입니다. 같은 페이스에서 파워가 낮아지면 러닝 효율이 개선된 것이에요. Avg Power는 평균, NP는 변동 보정 실질 강도입니다.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=rp['activity_date'], y=rp['avg_power'], mode='lines+markers',
+                        name='Avg Power', marker=dict(size=6, color='#FFA15A'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>Avg: %{y:.0f}W<extra></extra>'))
+                    if 'normalized_power' in rp.columns:
+                        np_df = rp[rp['normalized_power'].notna()]
+                        if not np_df.empty:
+                            fig.add_trace(go.Scatter(x=np_df['activity_date'], y=np_df['normalized_power'], mode='lines+markers',
+                                name='Normalized Power', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>NP: %{y:.0f}W<extra></extra>'))
+                    fig.update_yaxes(title_text="Power (W)")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
 
 # ═══════════════════════════════════════════════════════════
 # TAB 2: Cycling Analysis
