@@ -275,7 +275,7 @@ try:
     _conn.close()
 except:
     pass
-RUNNING_Z2_LOW = round(RUNNING_LTHR * 0.80)
+RUNNING_Z2_LOW = round(RUNNING_LTHR * 0.85)
 RUNNING_Z2_HIGH = round(RUNNING_LTHR * 0.89)
 
 
@@ -642,7 +642,7 @@ with tab_run:
 
             # 1. Zone2 Pace Trend (산점도 + 추세선 유지)
             st.header("1. Zone2 Pace Trend")
-            st.caption(f"심박수 {RUNNING_Z2_LOW}-{RUNNING_Z2_HIGH} bpm(가민 Z2) 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
+            st.caption(f"심박수 {RUNNING_Z2_LOW}-{RUNNING_Z2_HIGH} bpm(Friel Z2) 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
             if not z2.empty:
                 z2['rolling_avg'] = z2['pace_minutes'].rolling(window=5, min_periods=2).mean()
                 fig = go.Figure()
