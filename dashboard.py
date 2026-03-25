@@ -263,6 +263,21 @@ CYCLING_LTHR = load_cycling_lthr()
 CYCLING_Z2_LOW = round(CYCLING_LTHR * 0.68)
 CYCLING_Z2_HIGH = round(CYCLING_LTHR * 0.83)
 
+# 러닝 LTHR 기반 Zone2 (가민 설정 80-89%)
+RUNNING_LTHR = 190  # 기본값
+try:
+    _conn = get_connection()
+    _tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table' AND name='intervals_settings'", _conn)
+    if not _tables.empty:
+        _row = pd.read_sql_query("SELECT lthr FROM intervals_settings WHERE sport='running' AND lthr IS NOT NULL ORDER BY collected_at DESC LIMIT 1", _conn)
+        if not _row.empty:
+            RUNNING_LTHR = int(_row.iloc[0]['lthr'])
+    _conn.close()
+except:
+    pass
+RUNNING_Z2_LOW = round(RUNNING_LTHR * 0.80)
+RUNNING_Z2_HIGH = round(RUNNING_LTHR * 0.89)
+
 
 # ═══════════════════════════════════════════════════════════
 # TAB 0: Overview
@@ -627,7 +642,7 @@ with tab_run:
 
             # 1. Zone2 Pace Trend (산점도 + 추세선 유지)
             st.header("1. Zone2 Pace Trend")
-            st.caption("심박수 152-169 bpm 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
+            st.caption(f"심박수 {RUNNING_Z2_LOW}-{RUNNING_Z2_HIGH} bpm(가민 Z2) 구간에서의 평균 페이스입니다. 숫자가 낮을수록(빠를수록) 유산소 체력이 향상된 것입니다. 빨간 선은 5회 이동평균 추세선입니다.")
             if not z2.empty:
                 z2['rolling_avg'] = z2['pace_minutes'].rolling(window=5, min_periods=2).mean()
                 fig = go.Figure()
