@@ -1186,14 +1186,14 @@ with tab_ai:
                             with col_left:
                                 st.subheader(f"📌 {selected_date}")
                                 row = pd.read_sql_query(
-                                    "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                    "SELECT content, created_at, date, model FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                     ai_conn, params=[selected_date, atype])
                                 if row.empty and atype in ("weekly", "monthly"):
                                     row = pd.read_sql_query(
-                                        "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
+                                        "SELECT content, created_at, date, model FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                         ai_conn, params=[selected_date, atype])
                                 if not row.empty:
-                                    st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
+                                    st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])} | 🤖 {row.iloc[0].get('model', 'unknown')}")
                                     if row.iloc[0]['date'] != selected_date:
                                         st.caption(f"📅 {row.iloc[0]['date']} 기준 (가장 최근)")
                                     st.markdown(row.iloc[0]['content'])
@@ -1202,14 +1202,14 @@ with tab_ai:
                             with col_right:
                                 st.subheader(f"📌 {compare_date}")
                                 row2 = pd.read_sql_query(
-                                    "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                    "SELECT content, created_at, date, model FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                     ai_conn, params=[compare_date, atype])
                                 if row2.empty and atype in ("weekly", "monthly"):
                                     row2 = pd.read_sql_query(
-                                        "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
+                                        "SELECT content, created_at, date, model FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                         ai_conn, params=[compare_date, atype])
                                 if not row2.empty:
-                                    st.caption(f"🕐 분석 시간: {format_kst(row2.iloc[0]['created_at'])}")
+                                    st.caption(f"🕐 분석 시간: {format_kst(row2.iloc[0]['created_at'])} | 🤖 {row2.iloc[0].get('model', 'unknown')}")
                                     if row2.iloc[0]['date'] != compare_date:
                                         st.caption(f"📅 {row2.iloc[0]['date']} 기준 (가장 최근)")
                                     st.markdown(row2.iloc[0]['content'])
@@ -1217,14 +1217,14 @@ with tab_ai:
                                     st.info(f"{labels[atype]} 분석 없음")
                         else:
                             row = pd.read_sql_query(
-                                "SELECT content, created_at, date FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
+                                "SELECT content, created_at, date, model FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                 ai_conn, params=[selected_date, atype])
                             if row.empty and atype in ("weekly", "monthly"):
                                 row = pd.read_sql_query(
-                                    "SELECT content, created_at, date FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
+                                    "SELECT content, created_at, date, model FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                     ai_conn, params=[selected_date, atype])
                             if not row.empty:
-                                st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])}")
+                                st.caption(f"🕐 분석 시간: {format_kst(row.iloc[0]['created_at'])} | 🤖 {row.iloc[0].get('model', 'unknown')}")
                                 if row.iloc[0]['date'] != selected_date:
                                     st.caption(f"📅 {row.iloc[0]['date']} 기준 (가장 최근)")
                                 st.markdown(row.iloc[0]['content'])
