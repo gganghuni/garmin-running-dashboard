@@ -712,8 +712,8 @@ with tab_run:
                 show_trend(chart_trends, "run_weekly_dist")
 
             # 4. Pace Stability (유지)
-            st.header("4. Pace Stability (8km+)")
-            st.caption("8km 이상 장거리 러닝에서 1km 구간별 페이스 변동계수(CV)입니다. 7.5% 이하면 안정적인 페이스 유지. 높으면 후반에 페이스가 떨어진다는 뜻입니다.")
+            st.header("4. Pace Stability (5km+)")
+            st.caption("5km 이상 러닝에서 1km 구간별 페이스 변동계수(CV)입니다. 7.5% 이하면 안정적인 페이스 유지. 높으면 후반에 페이스가 떨어진다는 뜻입니다.")
             ps = df[df['pace_stability_cv'].notna()].copy()
             if not ps.empty:
                 fig = go.Figure(go.Scatter(x=ps['activity_date'], y=ps['pace_stability_cv'], mode='markers+lines',
@@ -725,7 +725,7 @@ with tab_run:
                 st.plotly_chart(fig, width="stretch")
                 show_trend(chart_trends, "run_pace_stability")
             else:
-                st.info("최근 8km 이상 장거리 러닝 기록이 없습니다.")
+                st.info("최근 5km 이상 러닝 기록이 없습니다.")
 
             # 5. Ground Contact Time (GCT)
             if 'avg_stance_time' in df.columns:
