@@ -1211,13 +1211,6 @@ with tab_health:
             bb = hdf[hdf['body_battery_charged'].notna()].copy()
             if not bb.empty:
                 fig = go.Figure()
-                # 워터폴 스타일: 충전 - 소모 = 순 변화
-                bb['net'] = bb['body_battery_charged'].fillna(0) - bb['body_battery_drain'].fillna(0)
-                bb_colors = ['#00CC96' if v >= 0 else '#EF553B' for v in bb['net']]
-                fig.add_trace(go.Bar(
-                    x=bb['date'], y=bb['net'], marker_color=bb_colors, name='순 충전',
-                    hovertemplate='%{x|%Y-%m-%d}<br>순 충전: %{y}<extra></extra>'
-                ))
                 # 기상 직후(max) 라인
                 if 'body_battery_max' in bb.columns:
                     bb_max = bb[bb['body_battery_max'].notna()]
@@ -1225,24 +1218,32 @@ with tab_health:
                         fig.add_trace(go.Scatter(
                             x=bb_max['date'], y=bb_max['body_battery_max'], mode='lines+markers',
                             name='기상 직후', marker=dict(size=5, color='#636EFA'), line=dict(width=2, color='#636EFA'),
-                            hovertemplate='%{x|%Y-%m-%d}<br>기상 직후: %{y}<extra></extra>',
-                            yaxis='y2'
+                            hovertemplate='%{x|%Y-%m-%d}<br>기상 직후: %{y}<extra></extra>'
                         ))
-                # 현재값(level) 라인
+                # 수집 시점(level) 라인
                 if 'body_battery_level' in bb.columns:
                     bb_lvl = bb[bb['body_battery_level'].notna()]
                     if not bb_lvl.empty:
                         fig.add_trace(go.Scatter(
                             x=bb_lvl['date'], y=bb_lvl['body_battery_level'], mode='lines+markers',
                             name='수집 시점', marker=dict(size=5, color='#AB63FA'), line=dict(width=2, dash='dot', color='#AB63FA'),
-                            hovertemplate='%{x|%Y-%m-%d}<br>수집 시점: %{y}<extra></extra>',
-                            yaxis='y2'
+                            hovertemplate='%{x|%Y-%m-%d}<br>수집 시점: %{y}<extra></extra>'
                         ))
-                fig.add_hline(y=0, line_color="gray", line_width=1)
+                # 충전량 라인
+                fig.add_trace(go.Scatter(
+                    x=bb['date'], y=bb['body_battery_charged'], mode='lines',
+                    name='충전', line=dict(width=1.5, color='#00CC96'),
+                    hovertemplate='%{x|%Y-%m-%d}<br>충전: %{y}<extra></extra>'
+                ))
+                # 소모량 라인
+                fig.add_trace(go.Scatter(
+                    x=bb['date'], y=bb['body_battery_drain'], mode='lines',
+                    name='소모', line=dict(width=1.5, color='#EF553B'),
+                    hovertemplate='%{x|%Y-%m-%d}<br>소모: %{y}<extra></extra>'
+                ))
+                fig.update_yaxes(title_text="Battery Level", range=[0, 100])
                 fig.update_layout(
                     height=350, margin=dict(t=30), title="Body Battery",
-                    yaxis=dict(title="순 충전 (충전-소모)"),
-                    yaxis2=dict(title="Battery Level", overlaying='y', side='right', range=[0, 100]),
                     legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
                 )
                 st.plotly_chart(fig, width="stretch")
