@@ -287,8 +287,8 @@ with tab_overview:
     show_updated_time("""
         SELECT MAX(t) FROM (
             SELECT MAX(collected_at) as t FROM daily_health
-            UNION ALL SELECT MAX(analyzed_at) as t FROM run_analysis
-            UNION ALL SELECT MAX(analyzed_at) as t FROM cycling_analysis
+            UNION ALL SELECT MAX(REPLACE(analyzed_at, 'T', ' ')) as t FROM run_analysis
+            UNION ALL SELECT MAX(REPLACE(analyzed_at, 'T', ' ')) as t FROM cycling_analysis
         )
     """)
     run_df = load_run_data()
@@ -599,7 +599,7 @@ with tab_overview:
 # TAB 1: Running Analysis
 # ═══════════════════════════════════════════════════════════
 with tab_run:
-    show_updated_time("SELECT MAX(analyzed_at) FROM run_analysis")
+    show_updated_time("SELECT MAX(REPLACE(analyzed_at, 'T', ' ')) FROM run_analysis")
     df = load_run_data()
     if df.empty:
         st.warning("러닝 분석 데이터가 없습니다.")
@@ -813,7 +813,7 @@ with tab_run:
 # TAB 2: Cycling Analysis
 # ═══════════════════════════════════════════════════════════
 with tab_bike:
-    show_updated_time("SELECT MAX(analyzed_at) FROM cycling_analysis")
+    show_updated_time("SELECT MAX(REPLACE(analyzed_at, 'T', ' ')) FROM cycling_analysis")
     cdf = load_cycling_data()
     if cdf.empty:
         st.warning("사이클링 분석 데이터가 없습니다.")
