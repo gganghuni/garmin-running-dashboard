@@ -1145,6 +1145,65 @@ with tab_bike:
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
 
+            # 14. VAM Trend (등반 속도)
+            if 'vam' in cdf.columns:
+                vm = cdf[cdf['vam'].notna()].copy()
+                if not vm.empty:
+                    st.header("14. VAM Trend")
+                    st.caption("시간당 고도 상승(m/h)입니다. 아마추어 300-500, 상급 500-800, 프로 800-1200. 같은 코스에서 VAM이 올라가면 등반 능력이 향상된 것이에요.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=vm['activity_date'], y=vm['vam'], mode='lines+markers',
+                        marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>VAM: %{y:.0f}m/h<extra></extra>'))
+                    if len(vm) >= 5:
+                        vm['rolling'] = vm['vam'].rolling(5, min_periods=1).mean()
+                        fig.add_trace(go.Scatter(x=vm['activity_date'], y=vm['rolling'], mode='lines',
+                            name='5-ride avg', line=dict(color='#EF553B', width=2)))
+                    fig.add_hline(y=500, line_dash="dash", line_color="green", annotation_text="상급 (500)")
+                    fig.update_yaxes(title_text="VAM (m/h)")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
+            # 15. Gradient Profile (경사도별 분포)
+            if 'uphill_pct' in cdf.columns:
+                gp = cdf[cdf['uphill_pct'].notna()].copy()
+                if not gp.empty:
+                    st.header("15. Gradient Profile")
+                    st.caption("라이딩별 평지/오르막/내리막 비율입니다. 산악 코스일수록 오르막 비율이 높아요.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=gp['activity_date'], y=gp['flat_pct'], name='평지',
+                        marker_color='#636EFA', hovertemplate='%{x|%Y-%m-%d}<br>평지: %{y:.0f}%<extra></extra>'))
+                    fig.add_trace(go.Bar(x=gp['activity_date'], y=gp['uphill_pct'], name='오르막',
+                        marker_color='#EF553B', hovertemplate='%{x|%Y-%m-%d}<br>오르막: %{y:.0f}%<extra></extra>'))
+                    fig.add_trace(go.Bar(x=gp['activity_date'], y=gp['downhill_pct'], name='내리막',
+                        marker_color='#00CC96', hovertemplate='%{x|%Y-%m-%d}<br>내리막: %{y:.0f}%<extra></extra>'))
+                    fig.update_layout(barmode='stack', height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    fig.update_yaxes(title_text="%")
+                    st.plotly_chart(fig, width="stretch")
+
+            # 16. Max Gradient & Avg Uphill Gradient
+            if 'max_gradient' in cdf.columns:
+                mg = cdf[cdf['max_gradient'].notna()].copy()
+                if not mg.empty:
+                    st.header("16. Climbing Gradient")
+                    st.caption("오르막 구간의 평균/최대 경사도입니다. 홍천 그란폰도는 최대 8-12% 경사가 있으니 이 수준에서의 훈련이 중요해요.")
+                    fig = go.Figure()
+                    if 'avg_gradient_uphill' in mg.columns:
+                        ag = mg[mg['avg_gradient_uphill'].notna()]
+                        if not ag.empty:
+                            fig.add_trace(go.Scatter(x=ag['activity_date'], y=ag['avg_gradient_uphill'], mode='lines+markers',
+                                name='평균 경사', marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                                hovertemplate='%{x|%Y-%m-%d}<br>평균: %{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Scatter(x=mg['activity_date'], y=mg['max_gradient'], mode='lines+markers',
+                        name='최대 경사', marker=dict(size=6, color='#EF553B'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>최대: %{y:.1f}%<extra></extra>'))
+                    fig.update_yaxes(title_text="경사도 (%)")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
 
 # ═══════════════════════════════════════════════════════════
 # TAB 3: Health
