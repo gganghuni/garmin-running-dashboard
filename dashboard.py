@@ -1123,6 +1123,28 @@ with tab_bike:
                     st.plotly_chart(fig, width="stretch")
                     show_trend(chart_trends, "cycle_tss_if")
 
+            # 13. Wind Conditions
+            if 'wind_speed' in cdf.columns:
+                wd = cdf[cdf['wind_speed'].notna()].copy()
+                if not wd.empty:
+                    st.header("13. Wind Conditions")
+                    st.caption("라이딩 시 풍속(km/h)과 돌풍입니다. 15km/h 이상이면 강풍, 25km/h 이상이면 매우 강풍이에요. 바람이 강한 날은 파워 대비 속도가 낮아질 수 있어요.")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=wd['activity_date'], y=wd['wind_speed'], mode='lines+markers',
+                        name='풍속', marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                        hovertemplate='%{x|%Y-%m-%d}<br>풍속: %{y:.1f}km/h<extra></extra>'))
+                    if 'wind_gust' in wd.columns:
+                        wg = wd[wd['wind_gust'].notna()]
+                        if not wg.empty:
+                            fig.add_trace(go.Scatter(x=wg['activity_date'], y=wg['wind_gust'], mode='lines+markers',
+                                name='돌풍', marker=dict(size=5, color='#EF553B'), line=dict(width=1.5, dash='dot'),
+                                hovertemplate='%{x|%Y-%m-%d}<br>돌풍: %{y:.1f}km/h<extra></extra>'))
+                    fig.add_hline(y=15, line_dash="dash", line_color="orange", annotation_text="강풍 (15km/h)")
+                    fig.update_yaxes(title_text="Wind (km/h)")
+                    fig.update_layout(height=350, margin=dict(t=20),
+                        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                    st.plotly_chart(fig, width="stretch")
+
 
 # ═══════════════════════════════════════════════════════════
 # TAB 3: Health
