@@ -253,8 +253,8 @@ def minutes_to_pace_str(minutes):
 
 
 # ─── 탭 구성 (4개) ────────────────────────────────────────
-tab_overview, tab_run, tab_bike, tab_health, tab_ai, tab_nutrition = st.tabs([
-    "📊 Overview", "🏃 Running", "🚴 Cycling", "❤️ Health", "🤖 AI Coach", "⚖️ Weight"
+tab_overview, tab_run, tab_bike, tab_health, tab_nutrition, tab_ai = st.tabs([
+    "📊 Overview", "🏃 Running", "🚴 Cycling", "❤️ Health", "⚖️ Weight", "🤖 AI Coach"
 ])
 
 # 차트 추세 데이터 로드 (1회)
@@ -1663,6 +1663,7 @@ with tab_nutrition:
                 fig.update_yaxes(title_text="kcal (적자 = 음수)")
                 fig.update_layout(height=350, margin=dict(t=20))
                 st.plotly_chart(fig, width="stretch")
+                show_trend(chart_trends, "weight_calorie")
 
             # 2. 섭취 vs 소모 추세
             st.header("2. Intake vs Expenditure")
@@ -1697,6 +1698,7 @@ with tab_nutrition:
                 fig.update_layout(height=350, margin=dict(t=20),
                     legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                 st.plotly_chart(fig, width="stretch")
+                show_trend(chart_trends, "weight_trend")
 
             # 4. 체지방률 추세
             st.header("4. Body Fat Trend")
@@ -1712,28 +1714,12 @@ with tab_nutrition:
                 fig.update_yaxes(title_text="%")
                 fig.update_layout(height=350, margin=dict(t=20))
                 st.plotly_chart(fig, width="stretch")
+                show_trend(chart_trends, "weight_body_fat")
             else:
                 st.info("체지방률 데이터가 없습니다.")
 
-            # 5. 단백질 섭취 vs 목표
-            st.header("5. Protein Intake vs Target")
-            st.caption(f"단백질 목표: {protein_target}g/일 (체중 {latest_weight:.0f}kg × {PROTEIN_TARGET_PER_KG}g). 지구력 운동 시 근손실 방지에 필수입니다.")
-            prot = wdf.copy()
-            if not prot.empty:
-                fig = go.Figure()
-                prot_colors = ['#EF553B' if p < protein_target else '#00CC96' for p in prot['intake_protein']]
-                fig.add_trace(go.Bar(
-                    x=prot['date'], y=prot['intake_protein'], marker_color=prot_colors, name='섭취',
-                    hovertemplate='%{x|%Y-%m-%d}<br>단백질: %{y}g<extra></extra>'
-                ))
-                fig.add_hline(y=protein_target, line_dash="dash", line_color="blue",
-                    annotation_text=f"목표 {protein_target}g")
-                fig.update_yaxes(title_text="g")
-                fig.update_layout(height=300, margin=dict(t=20))
-                st.plotly_chart(fig, width="stretch")
-
-            # 6. 누적 적자 → 예상 감량
-            st.header("6. Estimated Weight Loss")
+            # 5. 누적 적자 → 예상 감량
+            st.header("5. Estimated Weight Loss")
             st.caption("누적 칼로리 적자를 체지방 7,700kcal/kg로 환산한 예상 감량입니다.")
             if not cal.empty:
                 fig = go.Figure()
@@ -1743,6 +1729,7 @@ with tab_nutrition:
                 fig.update_yaxes(title_text="예상 감량 (kg)")
                 fig.update_layout(height=300, margin=dict(t=20))
                 st.plotly_chart(fig, width="stretch")
+                show_trend(chart_trends, "weight_loss")
 
     except Exception as e:
         st.warning(f"체중 관리 데이터 로딩 실패: {e}")
