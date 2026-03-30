@@ -830,6 +830,14 @@ with tab_bike:
         if min_bike_dist > 0:
             cdf = cdf[cdf['total_distance_km'] >= min_bike_dist]
 
+        # 실내/실외 필터
+        if 'indoor' in cdf.columns:
+            indoor_options = st.sidebar.radio("🏠 실내/실외", ["전체", "실외만", "실내만"], key="indoor_filter")
+            if indoor_options == "실외만":
+                cdf = cdf[cdf['indoor'] == 'outdoor']
+            elif indoor_options == "실내만":
+                cdf = cdf[cdf['indoor'] == 'indoor']
+
         if cdf.empty:
             st.warning("No data for the selected filters.")
         else:
