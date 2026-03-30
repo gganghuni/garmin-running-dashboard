@@ -253,8 +253,8 @@ def minutes_to_pace_str(minutes):
 
 
 # ─── 탭 구성 (4개) ────────────────────────────────────────
-tab_overview, tab_run, tab_bike, tab_health, tab_ai = st.tabs([
-    "📊 Overview", "🏃 Running", "🚴 Cycling", "❤️ Health", "🤖 AI Coach"
+tab_overview, tab_run, tab_bike, tab_health, tab_ai, tab_nutrition = st.tabs([
+    "📊 Overview", "🏃 Running", "🚴 Cycling", "❤️ Health", "🤖 AI Coach", "⚖️ Weight"
 ])
 
 # 차트 추세 데이터 로드 (1회)
@@ -1546,3 +1546,203 @@ with tab_ai:
                                 st.info(f"{labels[atype]} 분석 데이터가 없습니다.")
     except Exception as e:
         st.warning(f"AI 분석 로딩 실패: {e}")
+
+
+# ═══════════════════════════════════════════════════════════
+# TAB 5: Weight Management
+# ═══════════════════════════════════════════════════════════
+with tab_nutrition:
+    show_updated_time("SELECT MAX(collected_at) FROM daily_health")
+
+    # --- 사용자 프로필 ---
+    HEIGHT_CM = 166
+    AGE = 45
+
+    # --- 고정 식단 설정 ---
+    WEEKDAY_KCAL = 1580    # 평일(월~목)
+    WEEKDAY_PROTEIN = 95
+    WEEKDAY_CARBS = 150
+    TRAINING_KCAL = 2030   # 훈련일(금~일)
+    TRAINING_PROTEIN = 106
+    TRAINING_CARBS = 230
+    PROTEIN_TARGET_PER_KG = 1.6  # 지구력 운동 권장
+
+    # 데이터 로드
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        wdf = pd.read_sql_query("""
+            SELECT date, total_calories, active_calories, resting_calories,
+                   weight_kg, body_fat_pct, steps
+            FROM daily_health
+            WHERE date >= date('now', '-90 days')
+            ORDER BY date
+        """, conn)
+
+        # 운동 기록 확인 (날짜별 운동 유무)
+        act_df = pd.read_sql_query("""
+            SELECT DISTINCT date FROM activity_log
+            WHERE activity_type IN ('러닝', '사이클링', 'running', 'cycling')
+        """, conn)
+        conn.close()
+
+        training_dates = set(act_df['date'].tolist()) if not act_df.empty else set()
+
+        if wdf.empty:
+            st.warning("건강 데이터가 없습니다.")
+        else:
+            wdf['date'] = pd.to_datetime(wdf['date'])
+            wdf['weekday'] = wdf['date'].dt.weekday  # 0=월 ~ 6=일
+
+            # 평일/훈련일 칼로리 설정
+            wdf['intake_kcal'] = wdf.apply(
+                lambda r: TRAINING_KCAL if r['weekday'] >= 4 else WEEKDAY_KCAL, axis=1)
+            wdf['intake_protein'] = wdf.apply(
+                lambda r: TRAINING_PROTEIN if r['weekday'] >= 4 else WEEKDAY_PROTEIN, axis=1)
+            wdf['intake_carbs'] = wdf.apply(
+                lambda r: TRAINING_CARBS if r['weekday'] >= 4 else WEEKDAY_CARBS, axis=1)
+
+            # 칼로리 적자
+            wdf['deficit'] = wdf['intake_kcal'] - wdf['total_calories'].fillna(0)
+            wdf['cumulative_deficit'] = wdf['deficit'].cumsum()
+            # 7700kcal = 1kg 체지방
+            wdf['estimated_loss_kg'] = (wdf['cumulative_deficit'] / -7700).round(2)
+
+            # 최신 체중
+            latest_weight = wdf[wdf['weight_kg'].notna()]['weight_kg'].iloc[-1] if wdf['weight_kg'].notna().any() else 71.0
+            BMR = round(10 * latest_weight + 6.25 * HEIGHT_CM - 5 * AGE + 5)
+            protein_target = round(latest_weight * PROTEIN_TARGET_PER_KG)
+
+            # --- 사이드바 ---
+            st.sidebar.header("⚖️ Weight Filters")
+            w_period = st.sidebar.selectbox("기간", ["30일", "60일", "90일"], key="w_period")
+            days_map = {"30일": 30, "60일": 60, "90일": 90}
+            w_days = days_map[w_period]
+            wdf = wdf[wdf['date'] >= wdf['date'].max() - timedelta(days=w_days)]
+            wdf['cumulative_deficit'] = wdf['deficit'].cumsum()
+            wdf['estimated_loss_kg'] = (wdf['cumulative_deficit'] / -7700).round(2)
+
+            # --- 요약 ---
+            st.markdown(f"### ⚖️ 체중 관리 대시보드")
+            st.caption(f"BMR: {BMR}kcal | 평일(월~목): {WEEKDAY_KCAL}kcal | 훈련일(금~일): {TRAINING_KCAL}kcal | 단백질 목표: {protein_target}g ({PROTEIN_TARGET_PER_KG}g/kg)")
+
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                st.metric("현재 체중", f"{latest_weight:.1f} kg")
+            with c2:
+                avg_deficit = wdf['deficit'].mean()
+                st.metric("평균 일일 적자", f"{avg_deficit:.0f} kcal",
+                          delta=f"{'감량' if avg_deficit < 0 else '증량'} 모드")
+            with c3:
+                total_deficit = wdf['deficit'].sum()
+                est_loss = round(total_deficit / -7700, 2)
+                st.metric("예상 감량", f"{est_loss:.2f} kg")
+            with c4:
+                if wdf['body_fat_pct'].notna().any():
+                    latest_bf = wdf[wdf['body_fat_pct'] > 0]['body_fat_pct'].iloc[-1] if (wdf['body_fat_pct'] > 0).any() else None
+                    if latest_bf:
+                        st.metric("체지방률", f"{latest_bf:.1f}%")
+                    else:
+                        st.metric("체지방률", "데이터 없음")
+                else:
+                    st.metric("체지방률", "데이터 없음")
+
+            # 1. 칼로리 밸런스 (일별)
+            st.header("1. Daily Calorie Balance")
+            st.caption("섭취(고정 식단)와 소모(가민 TDEE)의 차이입니다. 막대가 아래로 갈수록 칼로리 적자(감량)예요. 일일 적자 300-500kcal이 건강한 감량 속도입니다.")
+            cal = wdf[wdf['total_calories'].notna()].copy()
+            if not cal.empty:
+                fig = go.Figure()
+                colors = ['#EF553B' if d < -800 else '#FFA15A' if d < -500 else '#00CC96' if d < 0 else '#636EFA' for d in cal['deficit']]
+                fig.add_trace(go.Bar(
+                    x=cal['date'], y=cal['deficit'], marker_color=colors, name='적자/흑자',
+                    hovertemplate='%{x|%Y-%m-%d}<br>적자: %{y:.0f}kcal<extra></extra>'
+                ))
+                fig.add_hline(y=0, line_color="gray", line_width=1)
+                fig.add_hline(y=-500, line_dash="dash", line_color="green", annotation_text="권장 적자 (-500)")
+                fig.add_hline(y=-1000, line_dash="dash", line_color="red", annotation_text="주의 (-1000)")
+                fig.update_yaxes(title_text="kcal (적자 = 음수)")
+                fig.update_layout(height=350, margin=dict(t=20))
+                st.plotly_chart(fig, width="stretch")
+
+            # 2. 섭취 vs 소모 추세
+            st.header("2. Intake vs Expenditure")
+            st.caption("파란선은 고정 식단 섭취량, 빨간선은 가민 TDEE(총 소모 칼로리)입니다.")
+            if not cal.empty:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=cal['date'], y=cal['intake_kcal'], mode='lines+markers',
+                    name='섭취', line=dict(color='#636EFA', width=2), marker=dict(size=5),
+                    hovertemplate='%{x|%Y-%m-%d}<br>섭취: %{y:.0f}kcal<extra></extra>'))
+                fig.add_trace(go.Scatter(x=cal['date'], y=cal['total_calories'], mode='lines+markers',
+                    name='소모 (TDEE)', line=dict(color='#EF553B', width=2), marker=dict(size=5),
+                    hovertemplate='%{x|%Y-%m-%d}<br>소모: %{y:.0f}kcal<extra></extra>'))
+                fig.update_yaxes(title_text="kcal")
+                fig.update_layout(height=350, margin=dict(t=20),
+                    legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                st.plotly_chart(fig, width="stretch")
+
+            # 3. 체중 추세
+            st.header("3. Weight Trend")
+            wt = wdf[wdf['weight_kg'].notna()].copy()
+            if not wt.empty:
+                st.caption(f"체중 변화 추세입니다. 시작: {wt['weight_kg'].iloc[0]:.1f}kg → 현재: {wt['weight_kg'].iloc[-1]:.1f}kg ({wt['weight_kg'].iloc[-1] - wt['weight_kg'].iloc[0]:+.1f}kg)")
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=wt['date'], y=wt['weight_kg'], mode='lines+markers',
+                    marker=dict(size=6, color='#636EFA'), line=dict(width=2),
+                    hovertemplate='%{x|%Y-%m-%d}<br>%{y:.1f}kg<extra></extra>'))
+                if len(wt) >= 5:
+                    wt['rolling'] = wt['weight_kg'].rolling(5, min_periods=1).mean()
+                    fig.add_trace(go.Scatter(x=wt['date'], y=wt['rolling'], mode='lines',
+                        name='5일 이동평균', line=dict(color='#EF553B', width=2)))
+                fig.update_yaxes(title_text="kg")
+                fig.update_layout(height=350, margin=dict(t=20),
+                    legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
+                st.plotly_chart(fig, width="stretch")
+
+            # 4. 체지방률 추세
+            st.header("4. Body Fat Trend")
+            bf = wdf[(wdf['body_fat_pct'].notna()) & (wdf['body_fat_pct'] > 0)].copy()
+            if not bf.empty:
+                st.caption(f"체지방률 변화입니다. 남성 15-20%가 운동 퍼포먼스에 적합합니다.")
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=bf['date'], y=bf['body_fat_pct'], mode='lines+markers',
+                    marker=dict(size=6, color='#AB63FA'), line=dict(width=2),
+                    hovertemplate='%{x|%Y-%m-%d}<br>%{y:.1f}%<extra></extra>'))
+                fig.add_hline(y=20, line_dash="dash", line_color="green", annotation_text="20% (건강)")
+                fig.add_hline(y=15, line_dash="dash", line_color="orange", annotation_text="15% (운동선수)")
+                fig.update_yaxes(title_text="%")
+                fig.update_layout(height=350, margin=dict(t=20))
+                st.plotly_chart(fig, width="stretch")
+            else:
+                st.info("체지방률 데이터가 없습니다.")
+
+            # 5. 단백질 섭취 vs 목표
+            st.header("5. Protein Intake vs Target")
+            st.caption(f"단백질 목표: {protein_target}g/일 (체중 {latest_weight:.0f}kg × {PROTEIN_TARGET_PER_KG}g). 지구력 운동 시 근손실 방지에 필수입니다.")
+            prot = wdf.copy()
+            if not prot.empty:
+                fig = go.Figure()
+                prot_colors = ['#EF553B' if p < protein_target else '#00CC96' for p in prot['intake_protein']]
+                fig.add_trace(go.Bar(
+                    x=prot['date'], y=prot['intake_protein'], marker_color=prot_colors, name='섭취',
+                    hovertemplate='%{x|%Y-%m-%d}<br>단백질: %{y}g<extra></extra>'
+                ))
+                fig.add_hline(y=protein_target, line_dash="dash", line_color="blue",
+                    annotation_text=f"목표 {protein_target}g")
+                fig.update_yaxes(title_text="g")
+                fig.update_layout(height=300, margin=dict(t=20))
+                st.plotly_chart(fig, width="stretch")
+
+            # 6. 누적 적자 → 예상 감량
+            st.header("6. Estimated Weight Loss")
+            st.caption("누적 칼로리 적자를 체지방 7,700kcal/kg로 환산한 예상 감량입니다.")
+            if not cal.empty:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=cal['date'], y=cal['estimated_loss_kg'], mode='lines',
+                    line=dict(color='#00CC96', width=2), fill='tozeroy', fillcolor='rgba(0,204,150,0.2)',
+                    hovertemplate='%{x|%Y-%m-%d}<br>예상 감량: %{y:.2f}kg<extra></extra>'))
+                fig.update_yaxes(title_text="예상 감량 (kg)")
+                fig.update_layout(height=300, margin=dict(t=20))
+                st.plotly_chart(fig, width="stretch")
+
+    except Exception as e:
+        st.warning(f"체중 관리 데이터 로딩 실패: {e}")
