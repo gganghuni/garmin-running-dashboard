@@ -1152,6 +1152,7 @@ with tab_bike:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_wind")
 
             # 14. VAM Trend (등반 속도)
             if 'vam' in cdf.columns:
@@ -1172,6 +1173,7 @@ with tab_bike:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_vam")
 
             # 15. Gradient Profile (경사도별 분포)
             if 'uphill_pct' in cdf.columns:
@@ -1211,6 +1213,7 @@ with tab_bike:
                     fig.update_layout(height=350, margin=dict(t=20),
                         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5))
                     st.plotly_chart(fig, width="stretch")
+                    show_trend(chart_trends, "cycle_gradient")
 
 
 # ═══════════════════════════════════════════════════════════
