@@ -1502,7 +1502,7 @@ with tab_ai:
                                 row = pd.read_sql_query(
                                     "SELECT content, created_at, date, model FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                     ai_conn, params=[selected_date, atype])
-                                if row.empty and atype in ("weekly", "monthly"):
+                                if row.empty:
                                     row = pd.read_sql_query(
                                         "SELECT content, created_at, date, model FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                         ai_conn, params=[selected_date, atype])
@@ -1518,7 +1518,7 @@ with tab_ai:
                                 row2 = pd.read_sql_query(
                                     "SELECT content, created_at, date, model FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                     ai_conn, params=[compare_date, atype])
-                                if row2.empty and atype in ("weekly", "monthly"):
+                                if row2.empty:
                                     row2 = pd.read_sql_query(
                                         "SELECT content, created_at, date, model FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                         ai_conn, params=[compare_date, atype])
@@ -1533,7 +1533,7 @@ with tab_ai:
                             row = pd.read_sql_query(
                                 "SELECT content, created_at, date, model FROM ai_analysis WHERE date = ? AND analysis_type = ? ORDER BY created_at DESC LIMIT 1",
                                 ai_conn, params=[selected_date, atype])
-                            if row.empty and atype in ("weekly", "monthly"):
+                            if row.empty:
                                 row = pd.read_sql_query(
                                     "SELECT content, created_at, date, model FROM ai_analysis WHERE date <= ? AND analysis_type = ? ORDER BY date DESC LIMIT 1",
                                     ai_conn, params=[selected_date, atype])
