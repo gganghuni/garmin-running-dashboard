@@ -1736,34 +1736,47 @@ with tab_nutrition:
 
 
 # ═══════════════════════════════════════════════════════════
-# TAB 6: 습관 트래커
+# TAB 6: 습관 트래커 (HABIT OS 스타일)
 # ═══════════════════════════════════════════════════════════
 with tab_habit:
     import json as _json
     from datetime import date as _date, timedelta as _td
 
+    # ── 일과 스케줄 정의 ───────────────────────────────────
+    SCHEDULE = {
+        0: {'type': '출근', 'morning': '🚗 06:00 자가용', 'evening': '🚴 19:00 자전거'},  # 월
+        1: {'type': '출근', 'morning': '🚇 07:00 지하철', 'evening': '🚗 19:00 자가용'},  # 화
+        2: {'type': '출근', 'morning': '🚗 06:00 자가용', 'evening': '🚴 19:00 자전거'},  # 수
+        3: {'type': '출근', 'morning': '🚇 07:00 지하철', 'evening': '🚗 19:00 자가용'},  # 목
+        4: {'type': '휴일'},  # 금
+        5: {'type': '휴일'},  # 토
+        6: {'type': '휴일'},  # 일
+    }
+    DAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+    DAY_KR = ['월', '화', '수', '목', '금', '토', '일']
+
     # ── 습관 정의 ───────────────────────────────────────────
     HABITS = [
-        ('sleep_early',  '수면', '🌙', '22:30 전 취침'),
-        ('no_caffeine',  '수면', '☕', '14시 이후 카페인 차단'),
-        ('sleep_shower', '수면', '🚿', '취침 전 온수 샤워'),
-        ('cycling',      '운동', '🚴', '사이클링'),
-        ('running',      '운동', '🏃', '러닝'),
-        ('stretching',   '운동', '🧘', '스트레칭 / 폼롤러'),
-        ('bike_commute', '운동', '🛣',  '자전거 통근 (42km)'),
-        ('walking_3k',   '운동', '🚶', '3km 이상 걷기'),
-        ('protein',      '영양', '🥩', '단백질 목표 달성'),
-        ('magnesium',    '영양', '💊', '마그네슘 복용'),
-        ('med_morning',  '영양', '💊', '아침약'),
-        ('med_lunch',    '영양', '💊', '점심약'),
-        ('med_evening',  '영양', '💊', '저녁약'),
-        ('water',        '영양', '💧', '수분 2L 이상'),
-        ('no_screen',    '회복', '📵', '취침 30분 전 스크린 오프'),
-        ('meditation',   '회복', '🧠', '5분 호흡 명상'),
+        ('sleep_early',  '수면 준비', '🌙', '22:30 전 취침', '수면의 질 ↑'),
+        ('no_caffeine',  '수면 준비', '☕', '14시 이후 카페인 차단', ''),
+        ('sleep_shower', '수면 준비', '🚿', '취침 전 온수 샤워', '수면 유도'),
+        ('cycling',      '운동', '🚴', '사이클링', ''),
+        ('running',      '운동', '🏃', '러닝', ''),
+        ('stretching',   '운동', '🧘', '스트레칭 / 폼롤러', '10분+'),
+        ('bike_commute', '운동', '🛣️', '자전거 통근', '편도 42km'),
+        ('walking_3k',   '운동', '🚶', '3km 이상 걷기', ''),
+        ('protein',      '영양 / 보충제', '🥩', '단백질 목표 달성', '체중×1.6g'),
+        ('magnesium',    '영양 / 보충제', '💊', '마그네슘 복용', '취침 전'),
+        ('med_morning',  '영양 / 보충제', '💊', '아침약', ''),
+        ('med_lunch',    '영양 / 보충제', '💊', '점심약', ''),
+        ('med_evening',  '영양 / 보충제', '💊', '저녁약', ''),
+        ('water',        '영양 / 보충제', '💧', '수분 2L 이상', ''),
+        ('no_screen',    '회복 / 멘탈', '📵', '취침 30분 전 스크린 오프', ''),
+        ('meditation',   '회복 / 멘탈', '🧠', '5분 호흡 명상', ''),
     ]
     HABIT_IDS  = [h[0] for h in HABITS]
-    CAT_COLORS = {'수면': '#a78bfa', '운동': '#5dffb0', '영양': '#ffcc44', '회복': '#00d4ff'}
-    CAT_EMOJI  = {'수면': '🌙', '운동': '⚡', '영양': '🥗', '회복': '🔋'}
+    CAT_COLORS = {'수면 준비': '#a78bfa', '운동': '#5dffb0', '영양 / 보충제': '#ffcc44', '회복 / 멘탈': '#00d4ff'}
+    CAT_EMOJI  = {'수면 준비': '🌙', '운동': '⚡', '영양 / 보충제': '🥗', '회복 / 멘탈': '🔋'}
 
     # ── SQLite habit_log 테이블 초기화 ──────────────────────
     def init_habit_table():
@@ -1776,7 +1789,6 @@ with tab_habit:
                 updated_at TEXT DEFAULT (datetime('now','localtime'))
             )
         """)
-        # 기존 테이블에 컬럼이 없으면 추가
         existing = {row[1] for row in conn.execute("PRAGMA table_info(habit_log)")}
         for hid in HABIT_IDS:
             if hid not in existing:
@@ -1837,137 +1849,290 @@ with tab_habit:
                 break
         return streak
 
-    # ── 초기화 & 데이터 로드 ─────────────────────────────────
+    # ── 초기화 ──────────────────────────────────────────────
     init_habit_table()
-    today_str   = _date.today().isoformat()
-    hist_df     = load_habit_history(30)
+    today_str = _date.today().isoformat()
+    hist_df   = load_habit_history(30)
 
-    # ── 날짜 선택 ────────────────────────────────────────────
-    h_col1, h_col2, h_col3 = st.columns([2, 2, 1])
+    # ── 헤더 ────────────────────────────────────────────────
+    h_col1, h_col2 = st.columns([3, 1])
     with h_col1:
-        sel_date = st.date_input('날짜 선택', value=_date.today(),
-                                  key='habit_date', label_visibility='collapsed')
-    sel_str = sel_date.isoformat()
-    with h_col3:
-        if st.button('↻', key='habit_refresh', help='새로고침'):
+        st.markdown("## ⚡ HABIT OS")
+    with h_col2:
+        sel_date = st.date_input('', value=_date.today(), key='habit_date', label_visibility='collapsed')
+        if st.button('🔄 새로고침', key='habit_refresh'):
             load_habit_history.clear()
             st.rerun()
+    sel_str = sel_date.isoformat()
 
-    # ── session_state로 체크 상태 관리 ──────────────────────
+    # 오늘 요일 정보
+    sel_weekday = sel_date.weekday()
+    today_sched = SCHEDULE.get(sel_weekday, {'type': '휴일'})
+
+    if today_sched['type'] == '출근':
+        st.info(f"🏢 오늘은 출근일 — {today_sched['morning']} → {today_sched['evening']}")
+    else:
+        st.success("😎 오늘은 휴일 — 🏃🚴 운동 가능일 — 컨디션 체크 후 결정하세요")
+
+    # ── 이번 주 일과 ────────────────────────────────────────
+    st.markdown("##### 📋 이번 주 일과")
+    week_start = sel_date - _td(days=sel_date.weekday())
+    week_cols = st.columns(7)
+    for i, col in enumerate(week_cols):
+        d = week_start + _td(days=i)
+        sched = SCHEDULE.get(i, {'type': '휴일'})
+        is_today = (d == sel_date)
+        with col:
+            if is_today:
+                st.markdown(f"<div style='border:2px solid #00d4ff;border-radius:12px;padding:8px;text-align:center;'>"
+                    f"<b>{DAY_LABELS[i]}</b><br>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='border:1px solid #333;border-radius:12px;padding:8px;text-align:center;'>"
+                    f"<b>{DAY_LABELS[i]}</b><br>", unsafe_allow_html=True)
+            if sched['type'] == '출근':
+                st.caption(f"{sched['morning']}")
+                st.caption(f"{sched['evening']}")
+            else:
+                st.caption("🏃 🚴")
+            if is_today:
+                st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── 오늘의 습관 ─────────────────────────────────────────
     sk = f'hab_{sel_str}'
     if sk not in st.session_state:
         st.session_state[sk] = load_habit_row(sel_str)
     checked = st.session_state[sk]
 
-    # ── 진행률 ──────────────────────────────────────────────
     total = len(HABITS)
     done  = sum(1 for h in HABITS if checked.get(h[0], False))
     pct   = done / total if total else 0
 
-    pg_col1, pg_col2 = st.columns([1, 4])
-    with pg_col1:
-        st.metric('완료', f'{done} / {total}')
-    with pg_col2:
+    st.markdown("##### ✅ 오늘의 습관")
+    msgs = [
+        (1.0,  f'🎉 오늘 모든 습관 완료! 완벽한 하루입니다.', 'success'),
+        (0.7,  f'💪 잘 하고 있어요! {total-done}개 남았습니다.', 'info'),
+        (0.4,  f'절반 이상 완료! {total-done}개 더 채워봐요.', 'warning'),
+        (0.01, f'시작이 반! {done}개 완료했어요.', 'warning'),
+        (0.0,  '오늘 습관을 시작해볼까요? ⬇️', 'info'),
+    ]
+    pg1, pg2 = st.columns([1, 5])
+    with pg1:
+        st.markdown(f"<div style='text-align:center;font-size:32px;font-weight:bold;'>{done}<br><span style='font-size:14px;color:#888'>/{total}</span></div>", unsafe_allow_html=True)
+    with pg2:
         st.progress(pct)
-        msgs = [
-            (1.0,  '🎉 오늘 모든 습관 완료! 완벽한 하루입니다.', 'success'),
-            (0.7,  f'💪 잘 하고 있어요! {total-done}개 남았습니다.', 'info'),
-            (0.4,  f'절반 이상 완료! {total-done}개 더 채워봐요.', 'warning'),
-            (0.01, f'시작이 반! {done}개 완료했어요.', 'warning'),
-            (0.0,  '오늘 습관을 시작해볼까요? ⬇️', 'info'),
-        ]
         for threshold, msg, kind in msgs:
             if pct >= threshold:
                 getattr(st, kind)(msg)
                 break
 
-    st.divider()
-
-    # ── 체크박스 (카테고리별 2열) ────────────────────────────
+    # ── 카테고리별 체크박스 ──────────────────────────────────
     changed = False
-    for cat in ['수면', '운동', '영양', '회복']:
+    for cat in ['수면 준비', '운동', '영양 / 보충제', '회복 / 멘탈']:
         color = CAT_COLORS[cat]
         st.markdown(
-            f'<p style="color:{color};font-weight:700;font-size:13px;'
-            f'letter-spacing:2px;text-transform:uppercase;margin:8px 0 4px">'
+            f'<p style="color:{color};font-weight:700;font-size:14px;'
+            f'letter-spacing:2px;margin:12px 0 4px;border-bottom:1px solid {color}40;padding-bottom:4px">'
             f'{CAT_EMOJI[cat]} {cat}</p>',
             unsafe_allow_html=True)
         cat_habits = [h for h in HABITS if h[1] == cat]
-        cols = st.columns(2)
-        for i, (hid, _, icon, label) in enumerate(cat_habits):
+        for hid, _, icon, label, hint in cat_habits:
             streak = calc_streak(hid, hist_df)
-            streak_txt = f'  🔥 {streak}일 연속' if streak > 0 else ''
-            with cols[i % 2]:
+            streak_txt = f'  🔥{streak}' if streak > 0 else ''
+            hint_txt = f' · <span style="color:#888;font-size:12px">{hint}</span>' if hint else ''
+            col1, col2 = st.columns([20, 1])
+            with col1:
                 new_val = st.checkbox(
                     f'{icon} {label}{streak_txt}',
                     value=checked.get(hid, False),
                     key=f'cb_{sel_str}_{hid}',
+                    help=hint if hint else None
                 )
                 if new_val != checked.get(hid, False):
                     checked[hid] = new_val
                     changed = True
 
-    # 변경 시 즉시 저장 + 화면 갱신
     if changed:
         st.session_state[sk] = checked
         save_habit_row(sel_str, checked)
         load_habit_history.clear()
         st.rerun()
 
-    # 수동 저장 버튼
     st.divider()
     if st.button('💾 저장', type='primary', key='habit_save'):
         save_habit_row(sel_str, checked)
         load_habit_history.clear()
         st.success(f'✅ {sel_str} 기록 저장 완료!')
 
-    # ── 이번 주 이행률 차트 ──────────────────────────────────
-    st.divider()
-    st.subheader('📊 이번 주 습관 이행률')
+    # ── 오늘 컨디션 (가민 건강 데이터) ──────────────────────
+    st.markdown("##### 🎯 오늘 컨디션")
+    try:
+        conn = get_connection()
+        h_row = pd.read_sql_query(
+            "SELECT * FROM daily_health WHERE date = ?", conn, params=[sel_str])
+        conn.close()
+        if not h_row.empty:
+            h = h_row.iloc[0]
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                v = h.get('sleep_score')
+                st.metric("수면점수", f"{int(v)}" if pd.notna(v) else "—")
+            with c2:
+                v = h.get('hrv_ms')
+                st.metric("HRV", f"{int(v)}ms" if pd.notna(v) else "—")
+            with c3:
+                v = h.get('body_battery_max') or h.get('body_battery_level')
+                st.metric("바디배터리", f"{int(v)}" if pd.notna(v) else "—")
+            with c4:
+                v = h.get('resting_hr')
+                st.metric("안정시HR", f"{int(v)}" if pd.notna(v) else "—")
+            c5, c6, c7, c8 = st.columns(4)
+            with c5:
+                v = h.get('spo2_avg')
+                st.metric("SPO₂", f"{v:.0f}%" if pd.notna(v) else "—")
+            with c6:
+                v = h.get('avg_stress')
+                st.metric("스트레스", f"{int(v)}" if pd.notna(v) else "—")
+            with c7:
+                v = h.get('training_readiness')
+                st.metric("준비도", f"{int(v)}" if pd.notna(v) else "—")
+            with c8:
+                v = h.get('avg_respiration')
+                st.metric("호흡수", f"{v:.0f}" if pd.notna(v) else "—")
+        else:
+            st.info(f"{sel_str} 건강 데이터가 없습니다.")
+    except Exception as e:
+        st.warning(f"컨디션 로드 실패: {e}")
 
-    week_start = _date.today() - _td(days=_date.today().weekday())
-    week_dates = [(week_start + _td(days=i)).isoformat() for i in range(7)]
-    day_labels = ['월','화','수','목','금','토','일']
+    # ── 피트니스 (CTL / ATL / TSB) ─────────────────────────
+    st.markdown("##### 📈 피트니스 (CTL / ATL / TSB)")
+    try:
+        conn = get_connection()
+        fit_row = pd.read_sql_query(
+            "SELECT ctl, atl, tsb, ramp_rate FROM intervals_fitness WHERE date = ? OR date <= ? ORDER BY date DESC LIMIT 1",
+            conn, params=[sel_str, sel_str])
+        conn.close()
+        if not fit_row.empty:
+            f = fit_row.iloc[0]
+            fc1, fc2, fc3, fc4 = st.columns(4)
+            with fc1:
+                st.metric("CTL", f"{f['ctl']:.1f}" if pd.notna(f.get('ctl')) else "—")
+            with fc2:
+                st.metric("ATL", f"{f['atl']:.1f}" if pd.notna(f.get('atl')) else "—")
+            with fc3:
+                v = f.get('tsb')
+                color = "🟢" if pd.notna(v) and v > 0 else "🔴"
+                st.metric("TSB", f"{color} {v:.1f}" if pd.notna(v) else "—")
+            with fc4:
+                st.metric("Ramp Rate", f"{f['ramp_rate']:.1f}" if pd.notna(f.get('ramp_rate')) else "—")
+        else:
+            st.info("피트니스 데이터가 없습니다.")
+    except Exception:
+        pass
 
+    # ── 최근 활동 ───────────────────────────────────────────
+    st.markdown("##### 🏃🚴 최근 활동")
+    try:
+        conn = get_connection()
+        acts = pd.read_sql_query(
+            "SELECT date, activity_type, distance_km, duration, avg_hr FROM activity_log WHERE date >= date(?, '-7 days') ORDER BY date DESC LIMIT 5",
+            conn, params=[sel_str])
+        conn.close()
+        if not acts.empty:
+            for _, act in acts.iterrows():
+                icon = '🏃' if '러닝' in str(act.get('activity_type', '')) else '🚴' if '사이클' in str(act.get('activity_type', '')) else '🚶'
+                dist = f"{act['distance_km']:.1f}km" if pd.notna(act.get('distance_km')) else ""
+                dur = act.get('duration', '') or ''
+                st.markdown(f"**{act['date']}** {icon} {act.get('activity_type', '')} — {dist} {dur}")
+        else:
+            st.info("최근 7일 활동 기록이 없습니다.")
+    except Exception:
+        st.warning("활동 데이터 로드 실패")
+
+    # ── 주간 수면 히스토리 ──────────────────────────────────
+    st.markdown("##### 😴 주간 수면 히스토리")
+    try:
+        conn = get_connection()
+        sleep_df = pd.read_sql_query(
+            "SELECT date, sleep_score, sleep_duration FROM daily_health WHERE date >= ? AND date <= ? ORDER BY date",
+            conn, params=[week_start.isoformat(), (week_start + _td(days=6)).isoformat()])
+        conn.close()
+        if not sleep_df.empty:
+            sl_cols = st.columns(7)
+            for i, col in enumerate(sl_cols):
+                d = (week_start + _td(days=i)).isoformat()
+                row = sleep_df[sleep_df['date'] == d]
+                with col:
+                    st.markdown(f"<div style='text-align:center;'><b>{DAY_LABELS[i]}</b></div>", unsafe_allow_html=True)
+                    if not row.empty:
+                        score = row.iloc[0].get('sleep_score')
+                        dur = row.iloc[0].get('sleep_duration', '')
+                        if pd.notna(score):
+                            color = '#5dffb0' if score >= 80 else '#ffcc44' if score >= 60 else '#ff7040'
+                            st.markdown(f"<div style='text-align:center;color:{color};font-size:20px;font-weight:bold;'>{int(score)}</div>", unsafe_allow_html=True)
+                            if dur:
+                                st.caption(f"{dur}")
+                        else:
+                            st.markdown("<div style='text-align:center;color:#555;'>—</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='text-align:center;color:#555;'>—</div>", unsafe_allow_html=True)
+        else:
+            st.info("이번 주 수면 데이터가 없습니다.")
+    except Exception:
+        pass
+
+    # ── 주간 습관 이행률 ────────────────────────────────────
+    st.markdown("##### 🔥 주간 습관 이행률")
     week_data = []
-    for d_str, d_lbl in zip(week_dates, day_labels):
-        row = hist_df[hist_df['date'] == d_str] if not hist_df.empty else pd.DataFrame()
+    for i in range(7):
+        d = (week_start + _td(days=i)).isoformat()
+        row = hist_df[hist_df['date'] == d] if not hist_df.empty else pd.DataFrame()
         if not row.empty:
-            n_done = sum(1 for hid in HABIT_IDS
-                         if bool(int(row.iloc[0].get(hid, 0) or 0)))
-        elif d_str == sel_str:
+            n_done = sum(1 for hid in HABIT_IDS if bool(int(row.iloc[0].get(hid, 0) or 0)))
+        elif d == sel_str:
             n_done = done
         else:
             n_done = 0
-        week_data.append({'날짜': d_lbl, '완료': n_done, '비율': n_done / total * 100 if total else 0})
+        week_data.append({'day': DAY_LABELS[i], 'done': n_done, 'pct': n_done / total * 100 if total else 0})
 
-    wdf = pd.DataFrame(week_data)
-    fig_week = go.Figure()
-    fig_week.add_bar(
-        x=wdf['날짜'], y=wdf['비율'],
-        marker_color=['#5dffb0' if v >= 80 else '#ffcc44' if v >= 50 else '#ff7040'
-                      for v in wdf['비율']],
-        text=[f"{int(v)}%" for v in wdf['비율']],
-        textposition='outside',
-    )
-    fig_week.add_hline(y=70, line_dash='dot', line_color='gray',
-                       annotation_text='목표 70%', annotation_font_color='gray')
-    fig_week.update_layout(
-        height=240, margin=dict(l=0, r=0, t=10, b=0),
-        yaxis=dict(range=[0, 115], showgrid=False, zeroline=False, visible=False),
-        xaxis=dict(showgrid=False),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        showlegend=False,
-    )
-    st.plotly_chart(fig_week, use_container_width=True)
+    wk_cols = st.columns(7)
+    for i, col in enumerate(wk_cols):
+        wd = week_data[i]
+        is_today = (i == sel_date.weekday())
+        with col:
+            border = 'border:2px solid #00d4ff;' if is_today else 'border:1px solid #333;'
+            # 카테고리별 달성 도트
+            d_str = (week_start + _td(days=i)).isoformat()
+            row = hist_df[hist_df['date'] == d_str] if not hist_df.empty else pd.DataFrame()
+            cat_dots = ''
+            for cat, color in CAT_COLORS.items():
+                cat_hids = [h[0] for h in HABITS if h[1] == cat]
+                if row.empty:
+                    cat_dots += f'<span style="color:#444;">●</span> '
+                else:
+                    cat_done = sum(1 for hid in cat_hids if bool(int(row.iloc[0].get(hid, 0) or 0)))
+                    if cat_done == len(cat_hids):
+                        cat_dots += f'<span style="color:{color};">●</span> '
+                    elif cat_done > 0:
+                        cat_dots += f'<span style="color:{color}80;">◐</span> '
+                    else:
+                        cat_dots += f'<span style="color:#444;">●</span> '
 
-    # ── 30일 카테고리별 히트맵 ──────────────────────────────
+            st.markdown(
+                f"<div style='{border}border-radius:12px;padding:10px;text-align:center;'>"
+                f"<div style='font-size:12px;color:#888;'>{wd['day']}</div>"
+                f"<div style='font-size:24px;font-weight:bold;'>{wd['done']}</div>"
+                f"<div style='font-size:12px;color:#888;'>/{total}</div>"
+                f"<div style='font-size:10px;margin-top:4px;'>{cat_dots}</div>"
+                f"</div>",
+                unsafe_allow_html=True)
+
+    # ── 30일 습관 달력 ──────────────────────────────────────
     if not hist_df.empty and len(hist_df) > 1:
-        st.subheader('🗓 30일 습관 달력')
+        st.divider()
+        st.markdown("##### 🗓 30일 습관 달력")
         cal_data = []
         for _, row in hist_df.iterrows():
-            for hid, _, icon, label in HABITS:
+            for hid, _, icon, label, _ in HABITS:
                 cal_data.append({
                     '날짜': row['date'],
                     '습관': f'{icon} {label}',
@@ -1978,21 +2143,17 @@ with tab_habit:
 
         fig_heat = go.Figure(go.Heatmap(
             z=pivot.values,
-            x=pivot.columns.tolist(),
-            y=pivot.index.tolist(),
-            colorscale=[[0, '#1c2030'], [1, '#5dffb0']],
+            x=[d[-5:] for d in pivot.columns],
+            y=pivot.index,
+            colorscale=[[0, '#1a1a2e'], [1, '#5dffb0']],
             showscale=False,
-            xgap=2, ygap=2,
-            hovertemplate='%{x}<br>%{y}<br>%{z}<extra></extra>',
+            hovertemplate='%{y}<br>%{x}<br>%{z}<extra></extra>',
         ))
         fig_heat.update_layout(
-            height=max(300, len(HABITS) * 26),
+            height=max(400, len(HABITS) * 28),
             margin=dict(l=0, r=0, t=10, b=0),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(showgrid=False, side='top'),
-            yaxis=dict(showgrid=False, autorange='reversed'),
-            font=dict(color='#dde1f0', size=11),
+            yaxis=dict(autorange='reversed'),
         )
         st.plotly_chart(fig_heat, use_container_width=True)
-
