@@ -1778,6 +1778,11 @@ with tab_habit:
     CAT_COLORS = {'수면 준비': '#a78bfa', '운동': '#5dffb0', '영양 / 보충제': '#ffcc44', '회복 / 멘탈': '#00d4ff'}
     CAT_EMOJI  = {'수면 준비': '🌙', '운동': '⚡', '영양 / 보충제': '🥗', '회복 / 멘탈': '🔋'}
 
+    # 요일별 표시 제한 (없으면 매일 표시)
+    WEEKDAY_FILTER = {
+        'bike_commute': [0, 2],  # 월, 수만 (자전거 퇴근일)
+    }
+
     # ── SQLite habit_log 테이블 초기화 ──────────────────────
     def init_habit_table():
         conn = get_connection()
@@ -1903,8 +1908,11 @@ with tab_habit:
         st.session_state[sk] = load_habit_row(sel_str)
     checked = st.session_state[sk]
 
-    total = len(HABITS)
-    done  = sum(1 for h in HABITS if checked.get(h[0], False))
+    # 오늘 요일에 맞는 습관만 필터
+    TODAY_HABITS = [h for h in HABITS if h[0] not in WEEKDAY_FILTER or sel_weekday in WEEKDAY_FILTER[h[0]]]
+
+    total = len(TODAY_HABITS)
+    done  = sum(1 for h in TODAY_HABITS if checked.get(h[0], False))
     pct   = done / total if total else 0
 
     st.markdown("##### ✅ 오늘의 습관")
@@ -1934,7 +1942,9 @@ with tab_habit:
             f'letter-spacing:2px;margin:12px 0 4px;border-bottom:1px solid {color}40;padding-bottom:4px">'
             f'{CAT_EMOJI[cat]} {cat}</p>',
             unsafe_allow_html=True)
-        cat_habits = [h for h in HABITS if h[1] == cat]
+        cat_habits = [h for h in TODAY_HABITS if h[1] == cat]
+        if not cat_habits:
+            continue
         for hid, _, icon, label, hint in cat_habits:
             streak = calc_streak(hid, hist_df)
             streak_txt = f'  🔥{streak}' if streak > 0 else ''
@@ -2085,14 +2095,18 @@ with tab_habit:
     week_data = []
     for i in range(7):
         d = (week_start + _td(days=i)).isoformat()
+        # 해당 요일의 습관 수 계산
+        day_habits = [h for h in HABITS if h[0] not in WEEKDAY_FILTER or i in WEEKDAY_FILTER[h[0]]]
+        day_total = len(day_habits)
+        day_hids = [h[0] for h in day_habits]
         row = hist_df[hist_df['date'] == d] if not hist_df.empty else pd.DataFrame()
         if not row.empty:
-            n_done = sum(1 for hid in HABIT_IDS if bool(int(row.iloc[0].get(hid, 0) or 0)))
+            n_done = sum(1 for hid in day_hids if bool(int(row.iloc[0].get(hid, 0) or 0)))
         elif d == sel_str:
             n_done = done
         else:
             n_done = 0
-        week_data.append({'day': DAY_LABELS[i], 'done': n_done, 'pct': n_done / total * 100 if total else 0})
+        week_data.append({'day': DAY_LABELS[i], 'done': n_done, 'total': day_total, 'pct': n_done / day_total * 100 if day_total else 0})
 
     wk_cols = st.columns(7)
     for i, col in enumerate(wk_cols):
@@ -2121,7 +2135,7 @@ with tab_habit:
                 f"<div style='{border}border-radius:12px;padding:10px;text-align:center;'>"
                 f"<div style='font-size:12px;color:#888;'>{wd['day']}</div>"
                 f"<div style='font-size:24px;font-weight:bold;'>{wd['done']}</div>"
-                f"<div style='font-size:12px;color:#888;'>/{total}</div>"
+                f"<div style='font-size:12px;color:#888;'>/{wd['total']}</div>"
                 f"<div style='font-size:10px;margin-top:4px;'>{cat_dots}</div>"
                 f"</div>",
                 unsafe_allow_html=True)
