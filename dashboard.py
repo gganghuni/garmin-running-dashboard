@@ -1874,10 +1874,30 @@ with tab_habit:
     sel_weekday = sel_date.weekday()
     today_sched = SCHEDULE.get(sel_weekday, {'type': '휴일'})
 
+    # 일과 표시
     if today_sched['type'] == '출근':
-        st.info(f"🏢 오늘은 출근일 — {today_sched['morning']} → {today_sched['evening']}")
+        sched_msg = f"{today_sched['morning']} → {today_sched['evening']}"
+        st.info(f"🏢 출근일 — {sched_msg}")
     else:
-        st.success("😎 오늘은 휴일 — 🏃🚴 운동 가능일 — 컨디션 체크 후 결정하세요")
+        st.success("😎 휴일 — 🏃🚴 운동 가능일")
+
+    # AI 운동 추천 표시
+    try:
+        conn = get_connection()
+        habit_ai = pd.read_sql_query(
+            "SELECT content, created_at, model FROM ai_analysis WHERE date <= ? AND analysis_type = 'habit' ORDER BY date DESC LIMIT 1",
+            conn, params=[sel_str])
+        conn.close()
+        if not habit_ai.empty:
+            ai_content = habit_ai.iloc[0]['content']
+            ai_model = habit_ai.iloc[0].get('model', '')
+            st.markdown(f"##### 🤖 AI 운동 추천")
+            st.markdown(ai_content)
+            st.caption(f"🤖 {ai_model}")
+        else:
+            st.info("AI 운동 추천이 아직 생성되지 않았습니다. 오전 9시 스케줄러 실행 후 표시됩니다.")
+    except Exception:
+        pass
 
     # ── 이번 주 일과 ────────────────────────────────────────
     st.markdown("##### 📋 이번 주 일과")
