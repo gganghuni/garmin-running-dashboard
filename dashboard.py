@@ -1854,6 +1854,55 @@ with tab_habit:
                 break
         return streak
 
+    def auto_check_from_garmin(date_str: str, checked: dict) -> tuple:
+        """가민 데이터에서 자동 체크 가능한 습관 감지"""
+        auto_detected = set()
+        try:
+            conn = get_connection()
+            acts = pd.read_sql_query(
+                "SELECT activity_type, distance_km FROM activity_log WHERE date = ?",
+                conn, params=[date_str])
+            health = pd.read_sql_query(
+                "SELECT hydration_intake_ml FROM daily_health WHERE date = ?",
+                conn, params=[date_str])
+            conn.close()
+
+            if not acts.empty:
+                for _, act in acts.iterrows():
+                    atype = str(act.get('activity_type', '')).lower()
+                    dist = act.get('distance_km') or 0
+
+                    if '사이클' in atype or 'cycling' in atype:
+                        auto_detected.add('cycling')
+                        if not checked.get('cycling'):
+                            checked['cycling'] = True
+                        if dist >= 35:
+                            auto_detected.add('bike_commute')
+                            if not checked.get('bike_commute'):
+                                checked['bike_commute'] = True
+
+                    if '러닝' in atype or 'running' in atype:
+                        auto_detected.add('running')
+                        if not checked.get('running'):
+                            checked['running'] = True
+
+                    if '걷기' in atype or 'walking' in atype:
+                        if dist >= 3:
+                            auto_detected.add('walking_3k')
+                            if not checked.get('walking_3k'):
+                                checked['walking_3k'] = True
+
+            if not health.empty:
+                hydration = health.iloc[0].get('hydration_intake_ml')
+                if hydration is not None and pd.notna(hydration) and hydration >= 2000:
+                    auto_detected.add('water')
+                    if not checked.get('water'):
+                        checked['water'] = True
+
+        except Exception:
+            pass
+        return checked, auto_detected
+
     # ── 초기화 ──────────────────────────────────────────────
     init_habit_table()
     today_str = _date.today().isoformat()
@@ -1928,6 +1977,14 @@ with tab_habit:
         st.session_state[sk] = load_habit_row(sel_str)
     checked = st.session_state[sk]
 
+    # 가민 데이터 자동 체크
+    checked, auto_detected = auto_check_from_garmin(sel_str, checked)
+
+    # 자동 체크 항목이 있으면 DB 저장
+    if auto_detected:
+        st.session_state[sk] = checked
+        save_habit_row(sel_str, checked)
+
     # 오늘 요일에 맞는 습관만 필터
     TODAY_HABITS = [h for h in HABITS if h[0] not in WEEKDAY_FILTER or sel_weekday in WEEKDAY_FILTER[h[0]]]
 
@@ -1968,16 +2025,18 @@ with tab_habit:
         for hid, _, icon, label, hint in cat_habits:
             streak = calc_streak(hid, hist_df)
             streak_txt = f'  🔥{streak}' if streak > 0 else ''
-            hint_txt = f' · <span style="color:#888;font-size:12px">{hint}</span>' if hint else ''
+            is_auto = hid in auto_detected
+            auto_txt = '  ✨자동' if is_auto else ''
             col1, col2 = st.columns([20, 1])
             with col1:
                 new_val = st.checkbox(
-                    f'{icon} {label}{streak_txt}',
+                    f'{icon} {label}{auto_txt}{streak_txt}',
                     value=checked.get(hid, False),
                     key=f'cb_{sel_str}_{hid}',
-                    help=hint if hint else None
+                    help=hint if hint else None,
+                    disabled=is_auto
                 )
-                if new_val != checked.get(hid, False):
+                if not is_auto and new_val != checked.get(hid, False):
                     checked[hid] = new_val
                     changed = True
 
