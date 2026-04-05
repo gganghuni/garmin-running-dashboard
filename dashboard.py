@@ -1764,7 +1764,7 @@ with tab_habit:
         ('running',      '운동', '🏃', '러닝', ''),
         ('stretching',   '운동', '🧘', '스트레칭 / 폼롤러', '10분+'),
         ('bike_commute', '운동', '🛣️', '자전거 통근', '편도 42km'),
-        ('walking_3k',   '운동', '🚶', '3km 이상 걷기', ''),
+        ('walking_3k',   '운동', '🚶', '1.6km 이상 걷기', ''),
         ('protein',      '영양 / 보충제', '🥩', '단백질 목표 달성', '체중×1.6g'),
         ('magnesium',    '영양 / 보충제', '💊', '마그네슘 복용', '취침 전'),
         ('med_morning',  '영양 / 보충제', '💊', '아침약', ''),
@@ -1887,7 +1887,7 @@ with tab_habit:
                             checked['running'] = True
 
                     if '걷기' in atype or 'walking' in atype:
-                        if dist >= 3:
+                        if dist >= 1.6:
                             auto_detected.add('walking_3k')
                             if not checked.get('walking_3k'):
                                 checked['walking_3k'] = True
