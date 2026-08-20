@@ -299,13 +299,17 @@ with tab_overview:
         st.warning("데이터가 없습니다. 먼저 동기화를 실행하세요.")
     else:
         st.sidebar.header("📊 Overview Filters")
+        # 분석에 실패한 활동은 날짜가 비어 있는 행으로 남을 수 있다(FIT 파싱 실패 등).
+        # 그대로 두면 NaT 가 섞여 아래 min()/max() 비교에서 TypeError 로 앱 전체가 죽으므로
+        # 여기서 결측을 걸러낸다. 한 건의 불량 데이터가 대시보드를 막아서는 안 된다.
         all_dates = []
         if not run_df.empty:
-            all_dates.extend(run_df['activity_date'].dt.date.tolist())
+            all_dates.extend(run_df['activity_date'].dropna().dt.date.tolist())
         if not cyc_df.empty:
-            all_dates.extend(cyc_df['activity_date'].dt.date.tolist())
+            all_dates.extend(cyc_df['activity_date'].dropna().dt.date.tolist())
         if not hdf.empty:
-            all_dates.extend(hdf['date'].dt.date.tolist())
+            all_dates.extend(hdf['date'].dropna().dt.date.tolist())
+        all_dates = [d for d in all_dates if pd.notna(d)]
 
         if all_dates:
             ov_date_min = min(all_dates)
